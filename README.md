@@ -36,11 +36,10 @@
 
 ## 🎯 Overview
 
-This project is a multi-agent system that automates first-line IT support ticket handling. Given an incoming ticket (subject, description, product/category context), the system classifies it, checks for a known resolution, attempts an autonomous fix via tool calls, and — critically — **knows when not to act**, escalating to a human agent when its own confidence is low.
+This project is a multi-agent system that automates first-line IT support ticket handling. Given an incoming ticket (subject, description, product/category context), the system classifies it, checks for a known resolution, attempts an autonomous fix via tool calls, and critically **knows when not to act**, escalating to a human agent when its own confidence is low.
 
 **Final Result: [X]% resolution accuracy, [Y]% false-escalation rate, [Z]% false-confidence rate on a [N]-ticket held-out eval set.**
 
-*(Fill this in once Week 3 eval is done — this single line is what a recruiter reads first.)*
 
 ---
 
@@ -105,8 +104,6 @@ This project is a multi-agent system that automates first-line IT support ticket
             └───────────┘ └─────────────────┘
 ```
 
-*(Replace this ASCII diagram with a screenshot of your actual LangGraph state graph once built — `langgraph` can export one directly.)*
-
 ---
 
 ## 🛠️ Tech Stack
@@ -158,7 +155,6 @@ it-triage-agent/
 └── requirements.txt
 ```
 
-**Week 1 additions to `data/`:**
 - `sample_tickets_labeled.csv` — 20 hand-labeled tickets used to eval the Classifier Agent before the full dataset is wired in
 - `test_classifier.py` — standalone script that runs `classify_ticket()` directly (no server needed) and reports category/priority accuracy
 - `classifier_eval_results.csv` — output of the above, per-ticket predicted vs. expected
@@ -168,7 +164,7 @@ it-triage-agent/
 ## ⚙️ Installation
 
 ```bash
-git clone https://github.com/<yourusername>/ConfidenceGatedTriageAgent.git
+git clone https://github.com/<Komal036>/ConfidenceGatedTriageAgent.git
 cd ConfidenceGatedTriageAgent
 
 # Create and activate a dedicated environment (Python 3.11)
@@ -265,9 +261,8 @@ Explain here **how you chose THRESHOLD** — via eval sweep, not guesswork. Show
 
 ## 📈 Results
 
-### Week 1 preliminary: Classifier Agent accuracy
+### Classifier Agent accuracy
 
-*(This evaluates the Classifier Agent in isolation, on a 20-ticket hand-labeled set — not the full pipeline. Full resolution/escalation metrics come in Week 3 once the Retriever, Resolver, and Escalation Judge exist.)*
 
 | Metric | Iteration 1 (baseline prompt) | Iteration 2 (rubric-guided prompt) |
 |---|---|---|
