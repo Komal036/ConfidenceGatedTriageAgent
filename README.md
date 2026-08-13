@@ -113,16 +113,17 @@ This project is a multi-agent system that automates first-line IT support ticket
 
 | Category | Technology |
 |---|---|
-| Backend | FastAPI, Uvicorn, Pydantic v2, SQLAlchemy |
-| Database | PostgreSQL (Neon) |
-| Vector store | pgvector |
-| Agent orchestration | LangGraph, LangChain |
-| LLM inference | Groq API (Llama 3.3 70B) |
-| Embeddings | sentence-transformers (all-MiniLM-L6-v2) |
-| Evaluation | pandas, scikit-learn |
-| Dashboard | Streamlit |
-| Deployment | Render |
-| CI | GitHub Actions |
+| Backend | FastAPI 0.115, Uvicorn, Pydantic v2, SQLAlchemy 2.0 |
+| Database | PostgreSQL (Neon, pooled connection) |
+| Vector store | pgvector *(added Week 2)* |
+| Agent orchestration | LangGraph, LangChain *(added Week 2)* |
+| LLM inference | Groq API — Llama 3.3 70B (`groq==1.6.0`) |
+| Embeddings | sentence-transformers (all-MiniLM-L6-v2) *(added Week 2)* |
+| Evaluation | pandas, custom accuracy scripts |
+| Dashboard | Streamlit *(added Week 4)* |
+| Deployment | Render *(added Week 4)* |
+| CI | GitHub Actions *(added Week 4)* |
+| Environment | Python 3.11, managed via Conda (`conda create -n gated python=3.11`) |
 
 ---
 
@@ -157,26 +158,34 @@ it-triage-agent/
 └── requirements.txt
 ```
 
+**Week 1 additions to `data/`:**
+- `sample_tickets_labeled.csv` — 20 hand-labeled tickets used to eval the Classifier Agent before the full dataset is wired in
+- `test_classifier.py` — standalone script that runs `classify_ticket()` directly (no server needed) and reports category/priority accuracy
+- `classifier_eval_results.csv` — output of the above, per-ticket predicted vs. expected
+
 ---
 
 ## ⚙️ Installation
 
 ```bash
-git clone https://github.com/<yourusername>/it-triage-agent.git
-cd it-triage-agent
+git clone https://github.com/<yourusername>/ConfidenceGatedTriageAgent.git
+cd ConfidenceGatedTriageAgent
+
+# Create and activate a dedicated environment (Python 3.11)
+conda create -n gated python=3.11
+conda activate gated
 
 pip install -r requirements.txt
 
 # Set up environment variables
 cp .env.example .env
-# Add GROQ_API_KEY, DATABASE_URL
+# Fill in GROQ_API_KEY (console.groq.com) and DATABASE_URL (Neon pooled connection string)
 
-# Run database migrations
-python -m app.db.init
-
-# Start the API
+# Start the API — tables are created automatically on first run
 uvicorn app.main:app --reload
 ```
+
+Visit `http://localhost:8000/docs` for the interactive API tester.
 
 ---
 
@@ -213,18 +222,19 @@ curl -X POST http://localhost:8000/submit-ticket \
 
 ## 🔍 Agent Design Deep-Dive
 
-*(Fill this in as you build each agent — mirror the "Feature Engineering" depth from the reference project. For each agent, explain: what it takes as input, how it decides, and one concrete example.)*
-
 ### Classifier Agent
-- Input: ...
-- Decision logic: ...
-- Example: ...
+- **Input:** ticket `subject` and `description` (free text)
+- **Output:** structured JSON — `category` (one of 7 fixed options) and `priority` (Low/Medium/High/Critical)
+- **Model:** Llama 3.3 70B via Groq, `temperature=0.1` (kept low deliberately — classification should be consistent, not creative)
+- **Decision logic:** a single prompt with two distinct rubrics baked in — category guidance (distinguishing genuine issues from requests/questions, so "how do I upgrade my plan" isn't miscategorized as a Billing problem) and priority guidance (explicit criteria per level, e.g. "High = significant disruption with no workaround", rather than leaving urgency to the model's unguided judgment)
+- **Failure handling:** if the LLM output can't be parsed as JSON, or returns a category/priority outside the fixed set, the agent falls back to `"General Inquiry"/"Medium"` and logs a warning rather than crashing the request — the same "fail safe, not silent" principle the Escalation Judge will later formalize with actual confidence scoring
+- **Example:** "My laptop keeps disconnecting from WiFi" → `{"category": "Network", "priority": "Medium"}`
 
-### Retriever Agent
+### Retriever Agent *(Week 2)*
 - Similarity threshold used: ...
 - What happens on no match: ...
 
-### Resolver Agent
+### Resolver Agent *(Week 2)*
 - Tools available: ...
 - When it chooses to act vs draft-only: ...
 
@@ -255,23 +265,25 @@ Explain here **how you chose THRESHOLD** — via eval sweep, not guesswork. Show
 
 ## 📈 Results
 
-| Metric | Value |
-|---|---|
-| Resolution accuracy | [X]% |
-| False-escalation rate | [Y]% |
-| False-confidence rate | [Z]% |
-| Avg. response latency | [T]s |
+### Week 1 preliminary: Classifier Agent accuracy
 
-### Per-category performance
+*(This evaluates the Classifier Agent in isolation, on a 20-ticket hand-labeled set — not the full pipeline. Full resolution/escalation metrics come in Week 3 once the Retriever, Resolver, and Escalation Judge exist.)*
 
-| Category | Accuracy | Status |
+| Metric | Iteration 1 (baseline prompt) | Iteration 2 (rubric-guided prompt) |
 |---|---|---|
-| Password/Account | XX% | ✅ Strong |
-| Network | XX% | ⚠️ Moderate |
-| Hardware | XX% | ⚠️ Moderate |
-| Billing | XX% | ❌ Weak — [explain why] |
+| Category accuracy | 75% (15/20)* | **100%** (20/20) |
+| Priority accuracy | 60% (12/20)* | **75%** (15/20) |
+| Both correct | 50% (10/20)* | **75%** (15/20) |
 
-*(Being honest about a weak category, like the reference repo did with high-price SMAPE, is what makes this credible instead of marketing copy.)*
+*\*Note: the baseline run's raw numbers included 3 tickets with a data-corruption bug (an unescaped comma in the CSV shifted columns); the real baseline, once corrected, was ~88% category / ~71% priority. Both iteration numbers above are on clean data.*
+
+### What changed between iterations
+
+The baseline prompt gave the model a list of valid categories/priorities with no criteria for choosing between them. Two failure patterns emerged:
+1. **Category:** requests/questions with no actual problem (e.g. "how do I upgrade my plan") were being classified into whatever technical bucket seemed closest (Billing, Software) instead of `General Inquiry`.
+2. **Priority:** the model consistently regressed toward `Medium` regardless of actual urgency — it avoided both `High` and `Low` even when the ticket clearly warranted them.
+
+Adding explicit rubrics for both fixed category accuracy completely and improved priority substantially. The remaining priority misses in iteration 2 show a **new, smaller, opposite-direction bias**: the rubric's emphasis on "check for a full blocker before defaulting to Medium" made the model slightly *over*-escalate borderline cases (e.g. a WiFi reconnect issue with an easy workaround got called `High` instead of `Medium`). This is a legitimate, understood limitation — not random error — and is a good candidate for a future few-shot prompting pass (see Future Improvements).
 
 ---
 
@@ -322,4 +334,4 @@ Plain accuracy treats a false-resolution and a false-escalation as equally bad �
 
 ---
 
-**Built with FastAPI · LangGraph · Groq · pgvector**# ConfidenceGatedTriageAgent
+**Built with FastAPI · LangGraph · Groq · pgvector**
