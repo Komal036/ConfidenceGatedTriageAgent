@@ -1,0 +1,21 @@
+subject,description,product,channel,expected_category,expected_priority
+Cannot connect to WiFi,"My laptop keeps disconnecting from WiFi every few minutes, especially when streaming video.",Dell XPS,Chat,Network,Medium
+Forgot my password,I can't log into my account and the reset email never arrived. Please help urgently.,Account Portal,Email,Account Access,High
+Charged twice this month,I noticed two identical charges on my card for the same subscription this billing cycle.,Subscription Service,Phone,Billing,Medium
+Screen flickering after update,Since the last software update my monitor flickers randomly and sometimes goes black.,HP Monitor,Chat,Hardware,Medium
+Lost my files after crash,The application crashed while saving and now my project file is gone. Any way to recover it?,Design Suite,Email,Data Loss,High
+How do I upgrade my plan,I want to move from the basic plan to premium but can't find the option in settings.,Subscription Service,Chat,General Inquiry,Low
+Printer not detected,My printer was working yesterday but now the computer says no printer found.,Office Printer X200,Phone,Hardware,Medium
+Account locked after failed logins,I tried logging in a few times and now it says my account is locked for 24 hours.,Account Portal,Chat,Account Access,High
+Refund not received,I requested a refund two weeks ago and it still hasn't shown up on my statement.,Subscription Service,Email,Billing,Medium
+Battery draining fast,My laptop battery used to last 8 hours and now it barely lasts 2 hours after the update.,Dell XPS,Chat,Hardware,Low
+App crashes on startup,"Every time I open the app it closes immediately, no error message shown.",Design Suite,Chat,Software,High
+Cannot install latest update,The installer gets stuck at 40% and then throws an unknown error.,Office Printer X200,Email,Software,Medium
+Wrong item billed,I was charged for the premium tier but I only signed up for basic.,Subscription Service,Phone,Billing,Medium
+Two-factor code never arrives,I never receive the SMS code when trying to log in from a new device.,Account Portal,Chat,Account Access,High
+Laptop overheating,The laptop gets extremely hot within 10 minutes of light use and fans are very loud.,Dell XPS,Email,Hardware,Medium
+Network drops during video calls,"Every call disconnects around the 15 minute mark, only during work hours.",Dell XPS,Chat,Network,High
+Deleted an important email by mistake,I need to recover an email I deleted from my inbox yesterday.,Account Portal,Email,Data Loss,Medium
+Feature request for dark mode,It would be great if the app supported a dark theme option.,Design Suite,Chat,General Inquiry,Low
+Invoice shows incorrect tax,The tax amount on my last invoice doesn't match my region's rate.,Subscription Service,Email,Billing,Low
+Monitor not detected after driver update,After updating graphics drivers my second monitor stopped being recognized.,HP Monitor,Chat,Hardware,Medium
