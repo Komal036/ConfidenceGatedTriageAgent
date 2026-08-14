@@ -4,6 +4,7 @@ from datetime import datetime
 from sqlalchemy import Column, String, Text, DateTime, ForeignKey, Float
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
+from pgvector.sqlalchemy import Vector
 
 from app.db.database import Base
 
@@ -55,3 +56,27 @@ class AgentDecision(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     ticket = relationship("Ticket", back_populates="decisions")
+
+
+class Resolution(Base):
+    """
+    The knowledge base: one row per known issue + its resolution.
+
+    'embedding' is a 384-dimensional vector (matching all-MiniLM-L6-v2's
+    output size) generated from `issue_summary`. The Retriever Agent
+    searches this table by comparing a new ticket's embedding against
+    every row's embedding using cosine distance.
+
+    Seeded by data/seed_knowledge_base.py — a mix of hand-written entries
+    (since the Kaggle dataset's Resolution field is sparse) and any real
+    resolutions pulled from the dataset that are usable as-is.
+    """
+    __tablename__ = "resolutions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    category = Column(String, nullable=False)
+    issue_summary = Column(Text, nullable=False)     # short description of the problem
+    resolution_text = Column(Text, nullable=False)   # the known fix
+    embedding = Column(Vector(384), nullable=True)   # filled in by seed_knowledge_base.py
+
+    created_at = Column(DateTime, default=datetime.utcnow)
