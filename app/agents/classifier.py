@@ -24,6 +24,23 @@ and description, output ONLY a JSON object with two fields:
 - "category": one of {categories}
 - "priority": one of {priorities}
 
+CATEGORY GUIDANCE:
+- "General Inquiry" is for requests, questions, or feature suggestions where NOTHING is \
+broken — e.g. "how do I upgrade my plan", "can you add dark mode". Do not classify these \
+as Billing or Software just because they mention a product area. Only use Billing/Software/etc. \
+when something is actually malfunctioning, disputed, or blocking the user.
+
+PRIORITY GUIDANCE — pick based on actual impact, not just tone:
+- "Critical": user is completely blocked (cannot log in at all, data is being actively lost, security breach)
+- "High": significant disruption to the user's work with no workaround (locked account, repeated \
+call drops, missing 2FA codes preventing login)
+- "Medium": inconvenient or annoying, but the user can still get their work done (billing disputes, \
+minor hardware issues, occasional glitches)
+- "Low": cosmetic, informational, or a request/question with no urgency (feature requests, \
+plan questions, minor invoice discrepancies)
+Do not default to "Medium" as a safe middle ground — actively check whether the ticket describes \
+a full blocker (favor High/Critical) or a non-issue request (favor Low) before settling on Medium.
+
 Ticket subject: {subject}
 Ticket description: {description}
 
