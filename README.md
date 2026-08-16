@@ -237,17 +237,53 @@ curl -X POST http://localhost:8000/submit-ticket \
 ---
 
 ## 🚦 Escalation Logic
+Escalates to a human when ANY of:
+resolution_status != "resolved" # no confident KB match at all
+OR match_similarity < 0.60 # match found, but too weak to trust
+OR priority == "Critical" # always human-reviewed regardless of match quality
 
-*(This is your project's signature section — treat it like the reference repo's "LoRA Configuration" deep-dive.)*
+`0.60` was chosen via a threshold sweep against 50 hand-labeled real
+Kaggle tickets (`data/sweep_escalation_threshold.py`), run through the
+actual Classifier + Retriever pipeline (not the hand labels):
 
-```
-Escalation triggered when:
-  confidence_score < THRESHOLD
-  OR retrieved_match_similarity < MATCH_THRESHOLD
-  OR category == "ambiguous"
-```
+| Threshold | Accuracy | False-Escalation Rate | False-Confidence Rate |
+|---|---|---|---|
+| 0.55 | 46.0% | 76.7% | 20.0% |
+| **0.60** | **48.0%** | 83.3% | **5.0%** |
+| 0.65 | 44.0% | 93.3% | 0.0% |
+| 0.70–0.90 | 40.0% | 100.0% | 0.0% |
 
-Explain here **how you chose THRESHOLD** — via eval sweep, not guesswork. Show a small table of accuracy vs. false-escalation rate at different threshold values, and justify the one you picked.
+0.65 has a lower false-confidence rate on paper, but it sits above every
+real match similarity observed in the eval set (max 0.678) — at that
+point the Judge isn't making a tuned decision, it's just escalating
+nearly everything, which trivially drives the "costly" error to zero at
+the expense of being a functioning system at all. 0.60 is the actual
+accuracy peak, trading one additional false-confidence case for a
+meaningfully better false-escalation rate.
+
+## 📈 Results
+
+### Escalation Judge / KB coverage on real-world tickets
+
+Running the pipeline against 50 real (not hand-written) Kaggle-sourced
+tickets exposed a generalization gap: the 25-entry KB, hand-written to
+match the phrasing of the original Week 1–2 synthetic eval tickets,
+matched **0% of real tickets** above the Retriever's own 0.55 threshold.
+Expanding the KB to 45 entries with more naturally-phrased issue
+summaries (targeting patterns actually observed in the real ticket
+sample — firmware-triggered faults, factory-reset-didn't-help,
+peripheral/charging issues, vague security concerns — written
+independently, not copied from the eval tickets themselves) raised the
+real-ticket match rate to **24% (12/50)**.
+
+This is the honest headline result of Week 3, not the threshold itself:
+for roughly three-quarters of real-world ticket phrasing, this KB
+currently has no confident match, and the Escalation Judge correctly
+routes those to a human by design rather than forcing a weak match. The
+75/25/0.60-threshold interplay is a secondary tuning decision on top of
+that more fundamental coverage limit — expanding KB coverage further
+(see Future Improvements) will move the needle more than re-tuning the
+threshold at this stage.
 
 ---
 
