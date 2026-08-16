@@ -238,8 +238,11 @@ curl -X POST http://localhost:8000/submit-ticket \
 
 ## 🚦 Escalation Logic
 Escalates to a human when ANY of:
+
 resolution_status != "resolved" # no confident KB match at all
+
 OR match_similarity < 0.60 # match found, but too weak to trust
+
 OR priority == "Critical" # always human-reviewed regardless of match quality
 
 `0.60` was chosen via a threshold sweep against 50 hand-labeled real
@@ -276,7 +279,7 @@ peripheral/charging issues, vague security concerns — written
 independently, not copied from the eval tickets themselves) raised the
 real-ticket match rate to **24% (12/50)**.
 
-This is the honest headline result of Week 3, not the threshold itself:
+This is the honest headline result, not the threshold itself:
 for roughly three-quarters of real-world ticket phrasing, this KB
 currently has no confident match, and the Escalation Judge correctly
 routes those to a human by design rather than forcing a weak match. The
