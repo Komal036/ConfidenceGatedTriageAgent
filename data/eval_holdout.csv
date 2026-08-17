@@ -1,0 +1,62 @@
+subject,description,cleaning_status,product,channel,expected_category,expected_priority,expected_escalate,raw_description
+Product setup,"I've recently set up my Microsoft Surface, but it fails to connect to any available networks. What steps should I take to troubleshoot this issue? I've tried using different cables, adapters, or peripherals with my Microsoft Surface, but the issue persists.",opening_kept,Microsoft Surface,Chat,Network,Medium,No,"I've recently set up my {product_purchased}, but it fails to connect to any available networks. What steps should I take to troubleshoot this issue? I'm sorry! I've tried using different cables, adapters, or peripherals with my {product_purchased}, but the issue persists."
+Data loss,"I've performed a factory reset on my PlayStation, hoping it would resolve the problem, but it didn't help.",garbled_opener_stripped,PlayStation,Email,Data Loss,Medium,Yes,"I'm having an issue with the {product_purchased}. Please assist.
+
+Thank you for your patience and consideration for this error.
+
+B. This product has been added to our database automatically. Please contact
+
+Customer Service I've performed a factory reset on my {product_purchased}, hoping it would resolve the problem, but it didn't help."
+Software bug,"I'm using the original charger that came with my Nest Thermostat, but it's not charging properly.",garbled_opener_stripped,Nest Thermostat,Email,Hardware,Medium,No,"I'm having an issue with the {product_purchased}. Please assist.
+
+When you select the product on our site and click on the 'add to cart' button, it says: 'Sorry – no product is found. Please I'm using the original charger that came with my {product_purchased}, but it's not charging properly."
+Display issue,This problem started occurring after the recent software update. I haven't made any other changes to the device.,garbled_opener_stripped,iPhone,Phone,Software,Medium,No,"I'm having an issue with the {product_purchased}. Please assist.
+
+I'm being served my customer. I've received the customer satisfaction I'm looking for. Thanks.
+
+The product we are looking for is from a This problem started occurring after the recent software update. I haven't made any other changes to the device."
+Product setup,"I've tried troubleshooting steps mentioned in the user manual, but the issue persists.",garbled_opener_stripped,Adobe Photoshop,Chat,General Inquiry,Medium,Yes,"I'm having an issue with the {product_purchased}. Please assist.
+
+
+* Please do not change the price. I just sold out of all 2.3 bottles. If this occurs, please inform me and tell me where you I've tried troubleshooting steps mentioned in the user manual, but the issue persists."
+Network problem,The Sony Xperia is unable to establish a stable internet connection. It keeps disconnecting intermittently. How can I troubleshoot this network problem? I've checked the device settings and made sure that everything is configured correctly.,opening_kept,Sony Xperia,Chat,Network,Medium,No,The {product_purchased} is unable to establish a stable internet connection. It keeps disconnecting intermittently. How can I troubleshoot this network problem? The following list includes everything that is necessary to get a stable connection from your computer I've checked the device settings and made sure that everything is configured correctly.
+Product compatibility,"I've followed the troubleshooting steps mentioned in the user manual, but the issue persists.",garbled_opener_stripped,Google Nest,Chat,General Inquiry,Medium,Yes,"I'm having an issue with the {product_purchased}. Please assist. I've followed the troubleshooting steps mentioned in the user manual, but the issue persists."
+Refund request,"I've recently set up my Garmin Forerunner, but it fails to connect to any available networks. What steps should I take to troubleshoot this issue? I'm concerned about the security of my Garmin Forerunner and would like to ensure that my data is safe.",opening_kept,Garmin Forerunner,Social media,Account Access,Medium,Yes,"I've recently set up my {product_purchased}, but it fails to connect to any available networks. What steps should I take to troubleshoot this issue?
+
+For those of you that are using Ubuntu 24.10, you I'm concerned about the security of my {product_purchased} and would like to ensure that my data is safe."
+Product recommendation,"I've followed online tutorials and community forums to troubleshoot the issue, but no luck so far.",garbled_opener_stripped,Dell XPS,Social media,General Inquiry,Medium,Yes,"I'm having an issue with the {product_purchased}. Please assist.
+
+I'm having an issue with the {product_purchased}. Please assist. In the US the company you purchased the original from has a fee of I've followed online tutorials and community forums to troubleshoot the issue, but no luck so far."
+Installation support,My Google Pixel is making strange noises and not functioning properly. I suspect there might be a hardware issue. Can you please help me with this? This problem started occurring after the recent software update. I haven't made any other changes to the device.,opening_kept,Google Pixel,Phone,Hardware,Medium,No,My {product_purchased} is making strange noises and not functioning properly. I suspect there might be a hardware issue. Can you please help me with this? My {product_purchased} is making strange noises and not functioning properly This problem started occurring after the recent software update. I haven't made any other changes to the device.
+Delivery problem,I've encountered a data loss issue with my iPhone. All the files and documents seem to have disappeared. Can you guide me on how to retrieve them? I'm not sure if this issue is specific to my device or if others have reported similar problems.,opening_kept,iPhone,Phone,Data Loss,High,Yes,I've encountered a data loss issue with my {product_purchased}. All the files and documents seem to have disappeared. Can you guide me on how to retrieve them? Is there a way to return to the data that's lost or stolen I'm not sure if this issue is specific to my device or if others have reported similar problems.
+Product compatibility,I'm concerned about the security of my Samsung Galaxy and would like to ensure that my data is safe.,garbled_opener_stripped,Samsung Galaxy,Email,Account Access,Medium,Yes,"I'm having an issue with the {product_purchased}. Please assist.
+
+What is this?
+
+Cancellations are the most effective way to get rid of unwanted product at any price. If your store does NOT have I'm concerned about the security of my {product_purchased} and would like to ensure that my data is safe."
+Account access,"I've tried different settings and configurations on my Xbox, but the issue persists.",garbled_opener_stripped,Xbox,Email,Account Access,Medium,No,"I'm having an issue with the {product_purchased}. Please assist.
+
+[8b1] The following product has a known issue and the {app_number}. [8b2] The {manufacturer} did not I've tried different settings and configurations on my {product_purchased}, but the issue persists."
+Peripheral compatibility,"I've tried clearing the cache and data for the Dell XPS app, but the issue persists.",garbled_opener_stripped,Dell XPS,Phone,Software,Medium,No,"I'm having an issue with the {product_purchased}. Please assist. Please. Please.
+
+Add to Cart
+
+Features
+
+Built in microUSB port
+
+6-inch touch panel with tilt-to-touch front I've tried clearing the cache and data for the {product_purchased} app, but the issue persists."
+Delivery problem,"The Nest Thermostat is unable to establish a stable internet connection. It keeps disconnecting intermittently. How can I troubleshoot this network problem? The issue I'm facing is intermittent. Sometimes it works fine, but other times it acts up unexpectedly.",opening_kept,Nest Thermostat,Phone,Network,Medium,No,"The {product_purchased} is unable to establish a stable internet connection. It keeps disconnecting intermittently. How can I troubleshoot this network problem?
+
+Try 1. The network connection for the user at /etc/ng The issue I'm facing is intermittent. Sometimes it works fine, but other times it acts up unexpectedly."
+Hardware issue,"I rely heavily on my LG OLED for my daily tasks, and this issue is hindering my productivity.",garbled_opener_stripped,LG OLED,Phone,Hardware,High,No,"I'm having an issue with the {product_purchased}. Please assist. I rely heavily on my {product_purchased} for my daily tasks, and this issue is hindering my productivity."
+Display issue,This problem started occurring after the recent software update. I haven't made any other changes to the device.,garbled_opener_stripped,Samsung Soundbar,Chat,Software,Medium,No,"I'm having an issue with the {product_purchased}. Please assist. If you find this issue has not yet been resolved please let me know here.
+
+You have requested the file: [ 1.01 MB, 4.8 This problem started occurring after the recent software update. I haven't made any other changes to the device."
+Product compatibility,"I've noticed a software bug in the Nintendo Switch app. It's causing data loss and unexpected errors. How can I resolve this issue? I've performed a factory reset on my Nintendo Switch, hoping it would resolve the problem, but it didn't help.",opening_kept,Nintendo Switch,Chat,Software,High,Yes,"I've noticed a software bug in the {product_purchased} app. It's causing data loss and unexpected errors. How can I resolve this issue?
+
+Use the search app settings for your country with http://developer.b I've performed a factory reset on my {product_purchased}, hoping it would resolve the problem, but it didn't help."
+Payment issue,I've checked the device settings and made sure that everything is configured correctly.,garbled_opener_stripped,Nikon D,Chat,General Inquiry,Medium,Yes,"I'm having an issue with the {product_purchased}. Please assist. We're having issues with the customer's account."" The email address also stated that the user had had the product shipped ""without our knowledge.""
+
+At the time I've checked the device settings and made sure that everything is configured correctly."
+Account access,I've noticed that the issue occurs consistently when I use a specific feature or application on my Fitbit Versa Smartwatch.,garbled_opener_stripped,Fitbit Versa Smartwatch,Chat,Software,Medium,No,I'm having an issue with the {product_purchased}. Please assist. I've noticed that the issue occurs consistently when I use a specific feature or application on my {product_purchased}.
