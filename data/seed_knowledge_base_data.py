@@ -1,7 +1,24 @@
 """
 Knowledge base seed data. These are hand-written because the Kaggle
 dataset's Resolution field is sparse (see data/clean_data.py's fill-rate
-check from Week 1). Covers all 7 categories with 3-4 entries each.
+). Covers all 7 categories with 3-4 entries each.
+
+the original 25 entries were phrased to closely match the
+hand-written eval tickets, and scored well against them (90% hit
+rate). Running data/diagnose_retrieval_scores.py against the 50 REAL
+Kaggle-sourced tickets in eval_tune.csv exposed a generalization gap --
+every single ticket scored below the 0.55 similarity threshold (range
+0.19-0.52), including cases that were clearly the right category (e.g.
+"Network problem" scored 0.505 against "Data disappeared after a failed
+sync" -- directionally right, not textually close enough).
+
+The entries below target that gap: phrased to reflect the *patterns* seen
+in eval_tune.csv's real tickets (firmware-triggered issues, factory-reset-
+didn't-help, peripheral/charging problems, vague security concerns,
+multiple-failed-support-contacts, etc.), written in original wording --
+deliberately NOT copied or closely paraphrased from the eval tickets
+themselves, since retrieval tested against a KB built from the same
+tickets it's evaluated on would be circular and would invalidate the eval.
 """
 
 KNOWLEDGE_BASE_SEED = [
@@ -68,4 +85,60 @@ KNOWLEDGE_BASE_SEED = [
      "resolution_text": "Thank the user for the suggestion and log it in the feature request tracker. No fix needed — this is not a bug. Provide an estimated timeline only if one is publicly available."},
     {"category": "General Inquiry", "issue_summary": "General question about how a feature works",
      "resolution_text": "Point to the relevant help center article. If none exists, explain the feature directly and flag the documentation gap internally."},
+
+    # ---additions below (see module docstring) ---
+
+    # Network
+    {"category": "Network", "issue_summary": "Device won't connect to any WiFi network during initial setup",
+     "resolution_text": "Confirm the device supports the router's band (some devices are 2.4GHz-only). Re-enter the WiFi password carefully (case-sensitive). Try connecting to a different network to isolate a device fault from a router-specific issue. If nothing connects, factory reset the device's network settings and retry setup from scratch."},
+    {"category": "Network", "issue_summary": "Smart home or IoT device disconnects from WiFi randomly throughout the day",
+     "resolution_text": "Check the router's DHCP lease time -- short leases can cause smart devices to silently drop off. Move the device closer to the router temporarily to rule out signal strength. Update the device's firmware, since many IoT WiFi bugs are fixed in later firmware versions rather than router-side changes."},
+    {"category": "Network", "issue_summary": "User is worried about the security of their network-connected device and whether their data is safe",
+     "resolution_text": "Confirm the device's firmware is up to date, since outdated firmware is the most common real security gap. Walk the user through checking connected-device/session lists in the account or router admin panel for anything unrecognized. Recommend a unique WiFi password if the network password is shared/weak."},
+
+    # Account Access
+    {"category": "Account Access", "issue_summary": "Login fails with an invalid credentials error even though the password looks correct",
+     "resolution_text": "Have the user retype the password manually rather than using autofill, since saved/cached passwords are a common silent mismatch. Confirm Caps Lock isn't on. If it still fails, trigger a manual password reset even though the password 'looks' right -- the stored hash may be out of sync after a past reset attempt."},
+    {"category": "Account Access", "issue_summary": "User suspects unauthorized access to their account and wants to secure it",
+     "resolution_text": "Review the account's recent login/session activity with the user and identify anything unrecognized. Force-logout all active sessions except the current one. Walk them through resetting their password and enabling two-factor authentication as a precaution, even if no confirmed breach is found."},
+    {"category": "Account Access", "issue_summary": "Login works sometimes but fails unpredictably other times",
+     "resolution_text": "Check for session token expiration or concurrent-login conflicts (e.g. the same account logged in on another device invalidating the session). Have the user clear cookies/cache for the login page. If using SSO, confirm the identity provider's session timeout isn't shorter than expected."},
+
+    # Hardware
+    {"category": "Hardware", "issue_summary": "Device won't charge properly even with the original charger and cable",
+     "resolution_text": "Test with a different wall outlet/power source to rule out the outlet itself. Inspect the charging port for visible debris or damage. If the original cable/charger still fails on a known-good outlet, this points to a genuine hardware fault in the port or battery, not a cable issue -- route to warranty/repair."},
+    {"category": "Hardware", "issue_summary": "Problem started right after a firmware update was installed on the device",
+     "resolution_text": "Check the firmware release notes for known regressions in this version. If a rollback path exists, walk the user through reverting to the previous firmware version. If no rollback is available, escalate to the hardware/firmware team with the exact version number and symptom."},
+    {"category": "Hardware", "issue_summary": "Issue persists even after performing a full factory reset on the device",
+     "resolution_text": "A factory reset only resolves software-state problems, so a symptom that survives a reset strongly suggests a genuine hardware fault rather than a configuration issue. Don't repeat further reset/reconfiguration steps -- route directly to warranty/repair with a note that reset was already attempted and did not help."},
+    {"category": "Hardware", "issue_summary": "An accessory or peripheral isn't recognized when connected to the main device",
+     "resolution_text": "Confirm the accessory's firmware/model is listed as compatible with this specific device model, since not all accessories in a product line are universally compatible. Try a different cable and port to rule out a connection-specific fault before assuming an incompatibility."},
+
+    # Software
+    {"category": "Software", "issue_summary": "App or feature crashes only when performing one specific action, not generally",
+     "resolution_text": "Reproduce the exact steps the user describes rather than general app usage, since the bug is likely isolated to that specific code path. Check crash logs filtered to that action. If not already fixed in the latest patch, route to engineering with the precise reproduction steps rather than a general 'app crashes' report."},
+    {"category": "Software", "issue_summary": "User confirms they're already on the latest software version but the issue remains",
+     "resolution_text": "Since updating isn't the fix here, shift focus to local cache/data corruption instead -- walk the user through clearing the app's cache or local data (not a full reinstall yet). If that doesn't help, this may be a bug not yet fixed in the current release; log it for engineering with the exact version number."},
+    {"category": "Software", "issue_summary": "Same bug is being reported by multiple users on the same device model",
+     "resolution_text": "This pattern indicates a systemic defect rather than a one-off, device-specific issue. Skip individual troubleshooting steps and escalate directly to engineering as a broader known-issue report, referencing the other affected tickets if available."},
+    {"category": "Software", "issue_summary": "App freezes frequently and becomes unresponsive during normal use",
+     "resolution_text": "Check whether resource usage (memory/CPU) climbs steadily before each freeze, which points to a memory leak. Clear the app's cache and confirm the device has adequate free storage. If freezes correlate with a specific feature, note that pattern for engineering rather than reporting it as a general freeze."},
+
+    # Data Loss
+    {"category": "Data Loss", "issue_summary": "All files disappeared after a factory reset or full device wipe",
+     "resolution_text": "Since a reset/wipe was performed, the primary recovery path is a cloud backup made before the reset -- check backup settings and history for the most recent successful backup and restore from there. Local recovery after a full wipe is usually not possible."},
+    {"category": "Data Loss", "issue_summary": "Device crashed and all previously stored data now appears to be gone",
+     "resolution_text": "Advise the user to stop using the device for further writes immediately, since continued use risks overwriting recoverable data. Check for any cloud sync or backup enabled on the account first. If none exists and the data is critical, recommend a professional data recovery service rather than DIY recovery attempts."},
+
+    # Billing
+    {"category": "Billing", "issue_summary": "User reports an ongoing billing problem that's affecting their ability to keep using the product, without specifying the exact issue",
+     "resolution_text": "Since no specific billing detail was given, don't guess -- ask the user for the exact charge date, amount, and what they expected instead. Escalate for a manual account review rather than attempting a generic billing fix based on assumptions."},
+    {"category": "Billing", "issue_summary": "User has already contacted support multiple times about the same unresolved billing issue",
+     "resolution_text": "Do not restart standard troubleshooting, since it has already failed multiple times for this user. Escalate directly to a senior billing agent with a note referencing the repeat contacts, and prioritize a same-day resolution given the prior friction."},
+
+    # General Inquiry
+    {"category": "General Inquiry", "issue_summary": "User wants to cancel or downgrade but the ticket doesn't specify enough detail to act on",
+     "resolution_text": "Ask the user to confirm exactly what they want cancelled or downgraded and the effective date they want it applied. Do not process a cancellation/downgrade based on assumption -- route to the account/billing team once details are confirmed."},
+    {"category": "General Inquiry", "issue_summary": "User is asking for a product or feature recommendation rather than reporting a problem",
+     "resolution_text": "This is a pre-purchase or advisory request, not a bug or fault. Point to the relevant product comparison page, or ask a clarifying question about their use case before recommending a specific option."},
 ]

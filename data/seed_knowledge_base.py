@@ -1,5 +1,5 @@
 """
-Day 2: Embeds each knowledge base entry using sentence-transformers and
+Embeds each knowledge base entry using sentence-transformers and
 inserts it into the `resolutions` table. Run this once to populate the
 knowledge base; safe to re-run (it clears and re-seeds each time).
 
