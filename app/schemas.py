@@ -17,5 +17,12 @@ class TicketResponse(BaseModel):
     priority: Optional[str]
     status: str
 
+    # Added : surfaces what the Retriever/Resolver decided, so the pipeline's reasoning is visible in the API response 
+    # itself and not just in the AgentDecision audit rows.
+    matched_issue: Optional[str] = None
+    match_similarity: Optional[float] = None
+    draft_resolution: Optional[str] = None
+    tool_called: Optional[str] = None
+
     class Config:
         from_attributes = True

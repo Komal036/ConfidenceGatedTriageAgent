@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.db.database import Base, engine, get_db
 from app.db import models
 from app.schemas import TicketCreate, TicketResponse
-from app.agents.classifier import classify_ticket
+from app.graph import run_triage_pipeline
 
 logging.basicConfig(level=logging.INFO)
 
@@ -29,12 +29,14 @@ def health_check():
 @app.post("/submit-ticket", response_model=TicketResponse)
 def submit_ticket(ticket_in: TicketCreate, db: Session = Depends(get_db)):
     """
-    Week 1 scope: store the ticket, run the Classifier Agent, save its output.
+    Week 2 scope: run the full agent pipeline (Classifier -> Retriever ->
+    Resolver) via the LangGraph state graph in app/graph.py, and persist one
+    AgentDecision audit row per agent so the pipeline's reasoning stays
+    inspectable after the fact.
 
-    In Week 2 this same function will grow to call the Retriever and Resolver
-    agents in sequence via a LangGraph state graph. Keeping it a plain
-    function call for now (rather than jumping straight to LangGraph) is
-    intentional — get one agent working end-to-end before adding orchestration.
+    'status' progresses received -> resolved / no_match here. Week 3 adds
+    the Escalation Judge, which will turn "no_match" (and low-confidence
+    "resolved" cases) into an actual "escalated" state instead.
     """
     ticket = models.Ticket(
         subject=ticket_in.subject,
@@ -47,19 +49,43 @@ def submit_ticket(ticket_in: TicketCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(ticket)
 
-    classification = classify_ticket(ticket_in.subject, ticket_in.description)
-    ticket.category = classification["category"]
-    ticket.priority = classification["priority"]
-    ticket.status = "classified"
+    result = run_triage_pipeline(db, ticket_in.subject, ticket_in.description)
+
+    ticket.category = result["category"]
+    ticket.priority = result["priority"]
+    ticket.status = "resolved" if result["resolution_status"] == "resolved" else "no_match"
     db.commit()
     db.refresh(ticket)
 
-    decision = models.AgentDecision(
+    db.add(models.AgentDecision(
         ticket_id=ticket.id,
         agent_name="classifier",
-        output_summary=f"Category: {classification['category']}, Priority: {classification['priority']}",
-    )
-    db.add(decision)
+        output_summary=f"Category: {result['category']}, Priority: {result['priority']}",
+    ))
+
+    retrieved_match = result["retrieved_match"]
+    if retrieved_match:
+        db.add(models.AgentDecision(
+            ticket_id=ticket.id,
+            agent_name="retriever",
+            output_summary=f"Matched: {retrieved_match['matched_issue']}",
+            confidence=retrieved_match["similarity"],
+        ))
+    else:
+        db.add(models.AgentDecision(
+            ticket_id=ticket.id,
+            agent_name="retriever",
+            output_summary="No confident match found in knowledge base.",
+        ))
+
+    if result["resolution_status"] == "resolved":
+        tool_note = f", tool called: {result['tool_called']}" if result["tool_called"] else ", no tool needed"
+        db.add(models.AgentDecision(
+            ticket_id=ticket.id,
+            agent_name="resolver",
+            output_summary=f"Drafted resolution{tool_note}.",
+        ))
+
     db.commit()
 
     return TicketResponse(
@@ -69,4 +95,8 @@ def submit_ticket(ticket_in: TicketCreate, db: Session = Depends(get_db)):
         category=ticket.category,
         priority=ticket.priority,
         status=ticket.status,
+        matched_issue=retrieved_match["matched_issue"] if retrieved_match else None,
+        match_similarity=retrieved_match["similarity"] if retrieved_match else None,
+        draft_resolution=result["draft_resolution"],
+        tool_called=result["tool_called"],
     )
