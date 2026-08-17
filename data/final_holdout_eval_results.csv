@@ -1,0 +1,21 @@
+subject,predicted_category,expected_category,predicted_priority,expected_priority,predicted_escalate,expected_escalate,similarity,escalation_reason
+Product setup,Hardware,Network,High,Medium,True,False,,No confident knowledge base match found; nothing to ground an autonomous reply in.
+Data loss,Data Loss,Data Loss,High,Medium,True,True,,No confident knowledge base match found; nothing to ground an autonomous reply in.
+Software bug,Hardware,Hardware,Medium,Medium,True,False,,No confident knowledge base match found; nothing to ground an autonomous reply in.
+Display issue,Software,Software,Medium,Medium,True,False,0.572,Match similarity 0.572 is below the escalation threshold (0.6); too uncertain to auto-resolve without a human check.
+Product setup,Hardware,General Inquiry,Medium,Medium,True,True,0.555,Match similarity 0.555 is below the escalation threshold (0.6); too uncertain to auto-resolve without a human check.
+Network problem,Network,Network,Medium,Medium,True,False,,No confident knowledge base match found; nothing to ground an autonomous reply in.
+Product compatibility,Software,General Inquiry,Medium,Medium,True,True,,No confident knowledge base match found; nothing to ground an autonomous reply in.
+Refund request,Hardware,Account Access,Medium,Medium,True,True,,No confident knowledge base match found; nothing to ground an autonomous reply in.
+Product recommendation,General Inquiry,General Inquiry,Low,Medium,True,True,,No confident knowledge base match found; nothing to ground an autonomous reply in.
+Installation support,Hardware,Hardware,Medium,Medium,True,False,,No confident knowledge base match found; nothing to ground an autonomous reply in.
+Delivery problem,Data Loss,Data Loss,High,High,True,True,0.56,Match similarity 0.56 is below the escalation threshold (0.6); too uncertain to auto-resolve without a human check.
+Product compatibility,General Inquiry,Account Access,Low,Medium,True,True,,No confident knowledge base match found; nothing to ground an autonomous reply in.
+Account access,Account Access,Account Access,High,Medium,True,False,,No confident knowledge base match found; nothing to ground an autonomous reply in.
+Peripheral compatibility,Hardware,Software,Medium,Medium,True,False,,No confident knowledge base match found; nothing to ground an autonomous reply in.
+Delivery problem,Hardware,Network,Medium,Medium,True,False,,No confident knowledge base match found; nothing to ground an autonomous reply in.
+Hardware issue,Hardware,Hardware,High,High,True,False,,No confident knowledge base match found; nothing to ground an autonomous reply in.
+Display issue,Software,Software,Medium,Medium,True,False,0.572,Match similarity 0.572 is below the escalation threshold (0.6); too uncertain to auto-resolve without a human check.
+Product compatibility,Software,Software,High,High,True,True,,No confident knowledge base match found; nothing to ground an autonomous reply in.
+Payment issue,Billing,General Inquiry,Medium,Medium,True,True,,No confident knowledge base match found; nothing to ground an autonomous reply in.
+Account access,Hardware,Software,Medium,Medium,True,False,,No confident knowledge base match found; nothing to ground an autonomous reply in.
