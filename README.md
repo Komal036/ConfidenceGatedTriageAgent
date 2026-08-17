@@ -112,14 +112,14 @@ This project is a multi-agent system that automates first-line IT support ticket
 |---|---|
 | Backend | FastAPI 0.115, Uvicorn, Pydantic v2, SQLAlchemy 2.0 |
 | Database | PostgreSQL (Neon, pooled connection) |
-| Vector store | pgvector *(added Week 2)* |
-| Agent orchestration | LangGraph, LangChain *(added Week 2)* |
+| Vector store | pgvector |
+| Agent orchestration | LangGraph, LangChain |
 | LLM inference | Groq API — Llama 3.3 70B (`groq==1.6.0`) |
-| Embeddings | sentence-transformers (all-MiniLM-L6-v2) *(added Week 2)* |
+| Embeddings | sentence-transformers (all-MiniLM-L6-v2) |
 | Evaluation | pandas, custom accuracy scripts |
-| Dashboard | Streamlit *(added Week 4)* |
-| Deployment | Render *(added Week 4)* |
-| CI | GitHub Actions *(added Week 4)* |
+| Dashboard | Streamlit |
+| Deployment | Render |
+| CI | GitHub Actions  |
 | Environment | Python 3.11, managed via Conda (`conda create -n gated python=3.11`) |
 
 ---
@@ -226,19 +226,24 @@ curl -X POST http://localhost:8000/submit-ticket \
 - **Failure handling:** if the LLM output can't be parsed as JSON, or returns a category/priority outside the fixed set, the agent falls back to `"General Inquiry"/"Medium"` and logs a warning rather than crashing the request — the same "fail safe, not silent" principle the Escalation Judge will later formalize with actual confidence scoring
 - **Example:** "My laptop keeps disconnecting from WiFi" → `{"category": "Network", "priority": "Medium"}`
 
-### Retriever Agent *(Week 2)*
-- Similarity threshold used: ...
-- What happens on no match: ...
+### Retriever Agent 
+- Similarity threshold used: `0.55` (cosine similarity on `all-MiniLM-L6-v2` embeddings, 384-dim)
+- What happens on no match: returns `None` rather than forcing a weak match. The
+  Resolver Agent treats `None` as `"no_match"` and does not attempt to draft a
+  reply — this is a deliberate handoff point for the Escalation Judge (Week 3)
+  rather than a failure mode.
+
 
 ### Resolver Agent *(Week 2)*
-- Tools available: ...
-- When it chooses to act vs draft-only: ...
+- Tools available: `check_system_status`, `reset_password`, `lookup_account`, or `none`
+- When it chooses to act vs draft-only: the LLM is given the matched knowledge
+  base resolution as grounding and decides per-ticket whether a tool call would
+  add information (e.g. confirming an outage) before drafting, or whether the
+  reference resolution alone is enough to write a direct reply.
 
----
 
 ## 🚦 Escalation Logic
 
-*(This is your project's signature section — treat it like the reference repo's "LoRA Configuration" deep-dive.)*
 
 ```
 Escalation triggered when:
@@ -260,9 +265,35 @@ Explain here **how you chose THRESHOLD** — via eval sweep, not guesswork. Show
 ---
 
 ## 📈 Results
+### Retriever Agent accuracy
 
+Evaluated against the same 20 hand-labeled tickets used for the classifier eval
+(`data/test_pipeline.py`), using a 25-entry hand-written knowledge base seeded
+across all 7 categories.
+
+| Metric | Result |
+|---|---|
+| Retrieval hit rate | 90.0% (18/20) |
+| Category agreement (of hits) | 94.4% (17/18) |
+
+**The 2 misses** were both genuine knowledge-base coverage gaps, not retrieval
+failures: "screen flickering after update" has no matching entry (the closest
+KB entry covers monitor *detection*, not flickering), and "feature request for
+dark mode" has no matching entry because the KB's single General Inquiry entry
+covers plan upgrades only. Both are addressed in Future Improvements (expand
+KB with edge-case tickets).
+
+**The 1 category mismatch** is more interesting: "wrong item billed" (Billing)
+matched a General Inquiry entry about upgrading plans (similarity 0.619)
+instead of a Billing entry that's a near-perfect fit — `"Charged for a plan
+tier the user did not select"` — which exists in the KB but wasn't retrieved.
+Both entries share surface vocabulary ("basic," "premium," "plan"), and the
+embedding model appears to have weighted that lexical overlap over the
+ticket's actual intent (an incorrect charge vs. a self-initiated upgrade
+request). This is a legitimate retrieval error, not a coverage gap, and it
+happened right at the threshold edge (0.619 vs. 0.55) — a case for future
+threshold tuning or reranking rather than just adding more KB entries.
 ### Classifier Agent accuracy
-
 
 | Metric | Iteration 1 (baseline prompt) | Iteration 2 (rubric-guided prompt) |
 |---|---|---|
@@ -285,16 +316,106 @@ Adding explicit rubrics for both fixed category accuracy completely and improved
 ## 💡 Key Design Decisions
 
 ### 1. Why LangGraph instead of CrewAI?
-*(Write your real reasoning once you've built it — e.g. explicit state graphs give auditable decision paths, which matters for an escalation-gated system.)*
+
+The core requirement driving this choice was auditability: every agent
+decision needs to be inspectable after the fact via the `AgentDecision`
+table, and eventually gated by an Escalation Judge that needs to see exactly
+what each prior step decided and why. LangGraph's `StateGraph` makes the
+pipeline's data flow explicit — a single `TriageState` TypedDict that each
+node reads from and writes back to, with the sequencing defined as plain
+edges (`classify → retrieve → resolve`). At any point, the full state is
+inspectable, and adding a conditional branch (e.g. the Escalation Judge
+routing "resolved but low-confidence" tickets differently than "no_match"
+ones) is a matter of adding an edge condition, not restructuring how agents
+communicate.
+
+CrewAI's abstraction is built around roles and delegation — a crew of agents
+that reason about how to divide work among themselves. That's a good fit
+for open-ended tasks where the *sequence* of work isn't known in advance.
+This project's pipeline is the opposite: the sequence is fixed and known
+(classify, then retrieve, then resolve, then judge), and each step is a
+plain Python function that's already unit-testable in isolation (see
+`data/test_classifier.py`, `data/test_pipeline.py`). LangGraph fits that
+shape more directly — it's an explicit graph over functions, not an
+orchestration layer for agents deciding what to do next.
+
+The trade-off: LangGraph gives up some of CrewAI's higher-level conveniences
+(built-in agent-to-agent delegation, role prompting) in exchange for that
+explicitness. For a pipeline where the whole point is a legible, auditable
+decision path — not autonomous task delegation — that trade favors
+LangGraph.
 
 ### 2. Why confidence-gating instead of full automation?
-...
+A fully autonomous agent that always resolves and always replies is easy to
+build and easy to get badly wrong — a wrong password-reset trigger or a
+wrong billing refund is worse than no action at all. The project's premise
+is that *knowing when the pipeline doesn't know* is more valuable than
+maximizing the percentage of tickets it touches.
 
+This shows up in the design well before Week 3's formal Escalation Judge:
+the Classifier falls back to a safe default rather than guessing on a parse
+failure; the Retriever returns `None` instead of forcing a weak match below
+`SIMILARITY_THRESHOLD`; the Resolver refuses to draft anything at all when
+there's no retrieved match to ground it. Each agent already has a built-in
+"I don't know" path — the Escalation Judge's job in Week 3 isn't to invent
+this behavior, it's to formalize the existing per-agent confidence signals
+(parse success, retrieval similarity, resolution grounding) into one
+explicit gating decision, and to make that decision auditable via the
+`AgentDecision` log rather than implicit in whichever agent happened to bail
+out first.
+
+The trade-off: this pipeline will escalate tickets a fully automated system
+would have resolved correctly. That's the intended cost — the project treats
+false escalation (a human reviews an easy ticket) as far cheaper than false
+confidence (the system tells a user something wrong).
+
+---
 ### 3. Why pgvector instead of a dedicated vector DB (Pinecone/Weaviate)?
-...
 
+The project already runs its relational data — `Ticket`, `AgentDecision` — on
+Postgres via Neon. Adding pgvector meant the `Resolution` knowledge base could
+live in the *same* database as one more table with a `Vector(384)` column,
+rather than standing up a second system and syncing state between them.
+
+For a knowledge base this size (25 entries now, realistically hundreds even
+after Future Improvements' "expand with synthetic edge cases"), a dedicated
+vector DB's main selling points — approximate nearest-neighbor indexes for
+millions of vectors, horizontal sharding — don't apply. pgvector's exact
+cosine-distance search (`<=>` operator) over a few hundred rows runs in
+single-digit milliseconds with no index at all; an IVFFlat or HNSW index
+would be premature optimization here.
+
+The trade-off is real, though: this only holds because the KB is small and
+single-tenant. If the knowledge base grew into the tens of thousands of
+entries, or needed to scale independently of the transactional data, a
+dedicated vector store's ANN indexing would start to matter, and that
+coupling to Postgres would become the thing to undo.
+
+---
 ### 4. Why Groq/Llama instead of GPT-4?
-...
+
+Two practical reasons.
+
+First, latency: Groq's inference is fast enough that running three
+sequential LLM calls per ticket (Classifier → Resolver, with the Retriever's
+embedding step in between) doesn't compound into a noticeably slow request —
+this matters more for a chained pipeline than it would for a single
+standalone call.
+
+Second, cost: at this project's scale (hand-labeled 20-ticket eval sets,
+25-entry KB, no production traffic), Groq's free tier and Llama 3.3 70B's
+pricing make iteration cheap. The classifier's two-iteration prompt rework
+(baseline → rubric-guided) and the resolver's prompt tuning both involved
+re-running the full eval set repeatedly — a cost-sensitive workflow benefits
+from a cheaper model here.
+
+The trade-off is real: Llama 3.3 70B is a smaller, less capable model than
+GPT-4, and it shows in places — the documented priority over-escalation bias
+in the classifier is partly a prompting gap, but a larger model might have
+generalized better from the same rubric with less explicit spelling-out.
+For a project demonstrating agent *architecture* (multi-agent orchestration,
+confidence gating, tool use) rather than pushing single-model classification
+accuracy to its ceiling, that trade-off favors Groq/Llama.
 
 ---
 
