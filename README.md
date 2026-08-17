@@ -5,7 +5,7 @@
 ![Python](https://img.shields.io/badge/Python-3.11-blue?style=flat-square&logo=python)
 ![FastAPI](https://img.shields.io/badge/FastAPI-backend-009688?style=flat-square&logo=fastapi)
 ![LangGraph](https://img.shields.io/badge/LangGraph-orchestration-purple?style=flat-square)
-![Groq](https://img.shields.io/badge/Groq-Llama_3.3_70B-orange?style=flat-square)
+![Groq](https://img.shields.io/badge/Groq-GPT--OSS_120B-orange?style=flat-square)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-pgvector-blue?style=flat-square&logo=postgresql)
 ![Dataset](https://img.shields.io/badge/Dataset-8.4k_tickets-yellow?style=flat-square)
 
@@ -38,7 +38,9 @@
 
 This project is a multi-agent system that automates first-line IT support ticket handling. Given an incoming ticket (subject, description, product/category context), the system classifies it, checks for a known resolution, attempts an autonomous fix via tool calls, and critically **knows when not to act**, escalating to a human agent when its own confidence is low.
 
-** result (20-ticket held-out eval): 55% category accuracy, 100% false-escalation rate, 0% false-confidence rate.** The system currently errs heavily toward caution given a 45-entry knowledge base's ~20-24% real-world match rate — see Results for the full breakdown of why that's a deliberate, honest tradeoff rather than a failure, and Future Improvements for the concrete next steps (KB expansion, category rubric refinement) that would move these numbers.
+**Result (20-ticket held-out eval): 60% category accuracy, 100% false-escalation rate, 0% false-confidence rate.** The system currently errs heavily toward caution given a 45-entry knowledge base's ~20-24% real-world match rate — see Results for the full breakdown of why that's a deliberate, honest tradeoff rather than a failure, and Future Improvements for the concrete next steps (KB expansion, category rubric refinement) that would move these numbers.
+
+*Note: this project's LLM originally ran on Llama 3.3 70B and was migrated to GPT-OSS 120B mid-project after Groq deprecated the former (see Key Design Decisions #5). Some results below were measured on one model, some on the other — each results section is labeled with which model produced it.*
 
 ---
 
@@ -113,7 +115,7 @@ This project is a multi-agent system that automates first-line IT support ticket
 | Database | PostgreSQL (Neon, pooled connection) |
 | Vector store | pgvector |
 | Agent orchestration | LangGraph, LangChain |
-| LLM inference | Groq API — Llama 3.3 70B (`groq==1.6.0`) |
+| LLM inference | Groq API — GPT-OSS 120B (`groq==1.6.0`), migrated from Llama 3.3 70B after Groq deprecated it mid-project |
 | Embeddings | sentence-transformers (all-MiniLM-L6-v2) |
 | Evaluation | pandas, custom accuracy scripts |
 | Dashboard | Streamlit |
@@ -225,7 +227,7 @@ curl -X POST http://localhost:8000/submit-ticket \
 ### Classifier Agent
 - **Input:** ticket `subject` and `description` (free text)
 - **Output:** structured JSON — `category` (one of 7 fixed options) and `priority` (Low/Medium/High/Critical)
-- **Model:** Llama 3.3 70B via Groq, `temperature=0.1` (kept low deliberately — classification should be consistent, not creative)
+- **Model:** `openai/gpt-oss-120b` via Groq (migrated from Llama 3.3 70B — see Key Design Decisions), `temperature=0.1` (kept low deliberately — classification should be consistent, not creative), `reasoning_effort="low"` (see Key Design Decisions #5 — GPT-OSS's default reasoning mode was silently consuming the entire token budget before producing output)
 - **Decision logic:** a single prompt with two distinct rubrics baked in — category guidance (distinguishing genuine issues from requests/questions, so "how do I upgrade my plan" isn't miscategorized as a Billing problem) and priority guidance (explicit criteria per level, e.g. "High = significant disruption with no workaround", rather than leaving urgency to the model's unguided judgment)
 - **Failure handling:** if the LLM output can't be parsed as JSON, or returns a category/priority outside the fixed set, the agent falls back to `"General Inquiry"/"Medium"` and logs a warning rather than crashing the request — the same "fail safe, not silent" principle the Escalation Judge later formalizes with actual confidence scoring
 - **Example:** "My laptop keeps disconnecting from WiFi" → `{"category": "Network", "priority": "Medium"}`
@@ -290,6 +292,11 @@ meaningfully better false-escalation rate.
 
 ### Classifier Agent accuracy
 
+*Note: the results below were measured on the original `llama-3.3-70b-versatile`
+model, before Groq's deprecation forced a migration to `openai/gpt-oss-120b`
+(see Key Design Decisions #5). They are not directly comparable to the Final
+Holdout Evaluation below, which runs on the current model.*
+
 | Metric | Iteration 1 (baseline prompt) | Iteration 2 (rubric-guided prompt) |
 |---|---|---|
 | Category accuracy | 75% (15/20)* | **100%** (20/20) |
@@ -335,6 +342,9 @@ threshold tuning or reranking rather than just adding more KB entries.
 
 ### Escalation Judge / KB coverage on real-world tickets
 
+*Note: this sweep also predates the GPT-OSS migration and ran on
+`llama-3.3-70b-versatile`.*
+
 Running the pipeline against 50 real (not hand-written) Kaggle-sourced
 tickets exposed a generalization gap: the original 25-entry KB, hand-written
 to match the phrasing of eval tickets, matched **0% of
@@ -353,49 +363,52 @@ matters more than the exact threshold value — expanding KB coverage further
 (see Future Improvements) will move the needle more than re-tuning the
 threshold at this stage.
 
-### Final holdout evaluation
+### Final holdout evaluation (current model: GPT-OSS 120B)
 
-Run against the 20 tickets held out from all tuning, using the real,
-locked-in pipeline end to end (`data/final_holdout_eval.py`):
+Evaluated end-to-end (Classifier → Retriever → Resolver → Escalation Judge)
+against 20 real Kaggle support tickets held out from threshold tuning.
 
-| Metric | Result |
-|---|---|
-| Category accuracy | 55.0% (11/20) |
-| Priority accuracy | 75.0% (15/20) |
-| Escalation decision accuracy | 45.0% (9/20) |
-| False-escalation rate | 100% (11/11) |
-| False-confidence rate | **0%** (0/9) |
+| Metric                          | Value        |
+|-----------------------------------|--------------|
+| Classifier category accuracy      | 60.0% (12/20) |
+| Classifier priority accuracy      | 50.0% (10/20) |
+| Escalation decision accuracy      | 45.0% (9/20) |
+| False-escalation rate             | 100% (11/11) |
+| False-confidence rate             | 0% (0/9)     |
+
+**Zero false-confidence is the load-bearing number here.** The system never
+auto-resolved a ticket it shouldn't have — every escalation "failure" was an
+*over-cautious* one (escalating a ticket a human reviewer might have let
+through), never an under-cautious one. For a confidence-gated system, this
+is the correct failure direction: it's far safer to escalate unnecessarily
+than to auto-resolve incorrectly.
 
 **On escalation:** the 100% false-escalation rate looks alarming in
-isolation, but the underlying data tells a consistent, expected story, not
-a broken system. Of the 20 holdout tickets, only 4 retrieved any KB match
-at all (a 20% hit rate — consistent with the tune set's 24%, small-sample
-variance). All 4 of those matches scored between 0.555 and 0.572 — just
-under the 0.60 escalation threshold by 0.03–0.045. With this few data points
-landing this close to the bar, this is normal sampling variance, not a
-threshold or KB failure — the tune set (50 tickets) already demonstrated the
-system successfully clearing 0.60 on multiple real tickets (up to 0.678).
+isolation, but the underlying cause is consistent and traceable, not a
+broken system. Of the 20 holdout tickets, only 4 retrieved any KB match at
+all (a 20% hit rate — close to the ~24% match rate observed on the 50-ticket
+tune set, within expected small-sample variance). All 4 of those matches
+scored between 0.555 and 0.572 — just under the 0.60 escalation threshold.
+The other 16 tickets found no match at all, which alone forces escalation
+regardless of priority or threshold tuning (see Escalation Judge design
+notes). This points to **knowledge base coverage**, not the escalation
+threshold or the Judge's logic, as the actual bottleneck — the tune set
+already demonstrated real tickets clearing 0.60 (up to 0.678), so the
+threshold itself isn't the limiting factor here.
 
-The one number that matters most held perfectly: **0% false confidence.**
-Every escalation on this holdout set was unnecessarily cautious, never
-wrongly confident. That's the system's core design principle (see Key
-Design Decisions #2) working exactly as intended, in its most extreme
-form — proof the Judge fails safe rather than fails silent.
+**On category accuracy (60.0%, 12/20):** of the 8 misses, 2 defaulted to
+"Hardware" under ambiguous or thinly-worded descriptions — a small signal
+that the category rubric may lean on a default under uncertainty, similar
+in kind (though smaller in scale) to the "Medium" priority default pattern.
+Not yet enough evidence to call this a confirmed bias, but worth watching
+as the eval set grows.
 
-**On category accuracy:** the drop from 100% (on hand-written
-tickets closely matching the classifier's rubric) to 55% here reflects
-real-world ticket ambiguity, not pure classifier error — several misses
-were on tickets the labeling process itself flagged as genuinely borderline
-(e.g. the "security/data safety" template debated between Account Access
-and Network during hand-labeling).
-
-More interesting: **6 of the 9 category misses defaulted to `Hardware`.**
-This mirrors the exact failure pattern already found and fixed for priority
-(the model defaulting to "Medium" under uncertainty) — except here it's the
-category rubric defaulting to "Hardware" instead of genuinely reasoning
-through ambiguous cases. This is a concrete, scoped target for a future
-prompt-rubric pass (see Future Improvements), the same fix pattern that took
-priority accuracy from 60% to 75% .
+**On priority accuracy (50.0%, 10/20):** predictions skewed toward
+High/Critical on tickets expected to be Medium. This did not affect any
+escalation decisions in this run, since none of the 20 tickets reached the
+priority-based override path (all escalations were driven by match
+confidence, not priority) — but it's a real classifier weakness worth
+addressing independently. See Future Improvements.
 
 ---
 
@@ -489,21 +502,57 @@ compound into a noticeably slow request — this matters more for a chained
 pipeline than it would for a single standalone call.
 
 Second, cost: at this project's scale (hand-labeled eval sets, a 45-entry
-KB, no production traffic), Groq's free tier and Llama 3.3 70B's pricing
+KB, no production traffic), Groq's free tier and open-weight model pricing
 make iteration cheap. The classifier's two-iteration prompt rework
 (baseline → rubric-guided), the resolver's prompt tuning, and the Week 3
 threshold sweep (50 tickets × Classifier + Retriever calls) all involved
 re-running eval sets repeatedly — a cost-sensitive workflow benefits from a
 cheaper model here.
 
-The trade-off is real: Llama 3.3 70B is a smaller, less capable model than
-GPT-4, and it shows in places — the documented priority over-escalation
-bias in the classifier, and the "Hardware" default-under-uncertainty bias
-found in Week 3's holdout eval, are partly prompting gaps that a larger
-model might have generalized past with less explicit rubric spelling-out.
-For a project demonstrating agent *architecture* (multi-agent orchestration,
+The trade-off is real: smaller open-weight models are less capable than
+GPT-4, and it shows in places — the classifier's priority over-escalation
+bias (observed on both Llama 3.3 70B and, independently, on GPT-OSS 120B
+after migration — see Key Design Decisions #5) suggests this is a rubric
+tuning gap rather than a single-model quirk. A larger, more heavily-aligned
+model might generalize past it with less explicit rubric spelling-out. For
+a project demonstrating agent *architecture* (multi-agent orchestration,
 confidence gating, tool use) rather than pushing single-model classification
-accuracy to its ceiling, that trade-off favors Groq/Llama.
+accuracy to its ceiling, that trade-off favors Groq's open-weight models
+over GPT-4.
+
+Note: this project's LLM choice was originally Llama 3.3 70B; it now runs
+on GPT-OSS 120B after Groq deprecated the former mid-project (see Key
+Design Decisions #5). The reasoning above regarding Groq vs. GPT-4 still
+applies to the current model.
+
+### 5. Handling a mid-project model deprecation (Llama 3.3 70B → GPT-OSS 120B)
+
+Partway through development, Groq deprecated `llama-3.3-70b-versatile` (the
+model this project was originally built on) for free/developer-tier usage,
+replacing it with `openai/gpt-oss-120b`. The migration wasn't a one-line
+swap — it surfaced a real debugging problem worth documenting.
+
+**First attempt (incomplete):** updating the model string and adding
+`response_format={"type": "json_object"}` plus a higher `max_tokens` fixed
+the Resolver, but the Classifier still failed to parse LLM output on
+**100% of tickets** — every call returned an empty response.
+
+**Root cause:** `gpt-oss-120b` is a *reasoning* model — by default
+(`reasoning_effort="medium"`) it spends part of its token budget on hidden
+chain-of-thought before producing the actual JSON answer. With the
+Classifier's tighter `max_tokens` budget, that reasoning consumed the
+entire allowance before any output was generated, leaving nothing to parse.
+
+**Actual fix:** setting `reasoning_effort="low"` on both the Classifier and
+Resolver, alongside `response_format={"type": "json_object"}` and a modest
+`max_tokens` increase, resolved it completely — 0 parse failures across
+subsequent eval runs.
+
+This is a real constraint of building on third-party LLM APIs: model
+availability isn't guaranteed to stay static, and newer models in the same
+family can have materially different default behavior (like hidden
+reasoning tokens) that silently breaks assumptions baked into prompts and
+token budgets tuned for a prior model.
 
 ---
 
