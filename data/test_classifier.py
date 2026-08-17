@@ -1,5 +1,5 @@
 """
-Week 1, Day 5: Run the Classifier Agent against a labeled batch of tickets
+Run the Classifier Agent against a labeled batch of tickets
 and measure accuracy. This calls classify_ticket() directly — no FastAPI
 server or database needed, so you can run this standalone.
 

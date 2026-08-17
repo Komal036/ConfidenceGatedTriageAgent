@@ -1,5 +1,4 @@
-"""
-Day 1 script: clean and explore the Kaggle Customer Support Ticket Dataset.
+""" clean and explore the Kaggle Customer Support Ticket Dataset.
 
 Download the CSV manually from:
 https://www.kaggle.com/datasets/suraj520/customer-support-ticket-dataset
