@@ -27,6 +27,9 @@ Usage:
 """
 import sys
 import os
+import sys
+if sys.platform == "win32":
+    sys.stdout.reconfigure(encoding="utf-8")
 import csv
 
 # Allow running this script directly from the project root
