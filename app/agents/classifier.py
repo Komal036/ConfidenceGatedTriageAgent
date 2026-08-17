@@ -70,8 +70,10 @@ def classify_ticket(subject: str, description: str) -> dict:
         response = client.chat.completions.create(
             model="openai/gpt-oss-120b",
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.1,  # low temperature — classification should be consistent, not creative
-            max_tokens=100,
+            temperature=0.1,
+            max_tokens=300,  # bumped from 100
+            response_format={"type": "json_object"},
+            reasoning_effort="low",  
         )
         raw_output = response.choices[0].message.content.strip()
 
