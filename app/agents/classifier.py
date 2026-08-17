@@ -68,7 +68,7 @@ def classify_ticket(subject: str, description: str) -> dict:
 
     try:
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="openai/gpt-oss-120b",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.1,  # low temperature — classification should be consistent, not creative
             max_tokens=100,

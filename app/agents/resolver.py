@@ -81,10 +81,11 @@ def resolve_ticket(subject: str, description: str, retrieved_match: dict | None)
 
     try:
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="openai/gpt-oss-120b",
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.3,  # slightly higher than the classifier — drafting text benefits from a little variation
-            max_tokens=300,
+            temperature=0.3,
+            max_tokens=500,  
+            response_format={"type": "json_object"},
         )
         raw_output = response.choices[0].message.content.strip()
         if raw_output.startswith("```"):
