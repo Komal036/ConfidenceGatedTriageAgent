@@ -23,7 +23,10 @@ app = FastAPI(
 Base.metadata.create_all(bind=engine)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=[
+        "http://localhost:3000",
+        "https://confidence-gated-triage-agent.vercel.app",
+    ],
     allow_methods=["*"],
     allow_headers=["*"],
 )
