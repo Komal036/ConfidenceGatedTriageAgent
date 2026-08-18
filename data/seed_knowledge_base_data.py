@@ -18,7 +18,19 @@ didn't-help, peripheral/charging problems, vague security concerns,
 multiple-failed-support-contacts, etc.), written in original wording --
 deliberately NOT copied or closely paraphrased from the eval tickets
 themselves, since retrieval tested against a KB built from the same
-tickets it's evaluated on would be circular and would invalidate the eval.
+tickets it's evaluated on would be circular and would invalidate the eval
+
+ re-running diagnose_retrieval_scores.py against the same
+50-ticket tune set after the above expansion (45 entries) still showed a
+~24% match rate (12/50). A follow-up gap analysis on the 38 remaining
+misses -- cross-checking actual ticket descriptions, not just subjects,
+since the Kaggle subjects are frequently mismatched to the real complaint
+-- surfaced further concrete gaps. Five more entries were added below to
+target those (see README Results for before/after numbers). One candidate
+entry ("same bug reported by multiple users on the same device model") was
+dropped from this batch as a near-duplicate of an existing Software entry
+below, rather than kept as redundant KB content that splits similarity
+mass across two near-identical entries.
 """
 
 KNOWLEDGE_BASE_SEED = [
@@ -86,7 +98,7 @@ KNOWLEDGE_BASE_SEED = [
     {"category": "General Inquiry", "issue_summary": "General question about how a feature works",
      "resolution_text": "Point to the relevant help center article. If none exists, explain the feature directly and flag the documentation gap internally."},
 
-    # ---additions below (see module docstring) ---
+    # --- Week 3 additions (see module docstring) ---
 
     # Network
     {"category": "Network", "issue_summary": "Device won't connect to any WiFi network during initial setup",
@@ -141,4 +153,26 @@ KNOWLEDGE_BASE_SEED = [
      "resolution_text": "Ask the user to confirm exactly what they want cancelled or downgraded and the effective date they want it applied. Do not process a cancellation/downgrade based on assumption -- route to the account/billing team once details are confirmed."},
     {"category": "General Inquiry", "issue_summary": "User is asking for a product or feature recommendation rather than reporting a problem",
      "resolution_text": "This is a pre-purchase or advisory request, not a bug or fault. Point to the relevant product comparison page, or ask a clarifying question about their use case before recommending a specific option."},
+
+    # --- Week 4 additions (see module docstring) ---
+
+    # Hardware
+    {"category": "Hardware", "issue_summary": "Battery life has been gradually declining over weeks or months of normal use",
+     "resolution_text": "Gradual battery capacity loss over time is usually normal wear rather than a defect — most rechargeable batteries lose some capacity after repeated charge cycles. Try recalibrating the battery by fully draining it and then charging it to 100% without interruption, and check for a software update that may include power management improvements. If the device is still within its warranty period and battery life has dropped significantly (more than 20% below original), a hardware replacement may be warranted."},
+
+    # Network
+    {"category": "Network", "issue_summary": "Device fails to detect or connect to any WiFi network right after first unboxing or initial setup",
+     "resolution_text": "During first-time setup, make sure the device's WiFi radio is enabled and you're within range of the router. Try forgetting the network on the device and re-entering the WiFi password carefully, especially for networks with special characters. If the device still won't detect any networks at all (not just one specific network), a factory reset before retrying setup often resolves first-boot connectivity issues."},
+
+    # General Inquiry
+    {"category": "General Inquiry", "issue_summary": "User can't locate a specific feature, setting, or option and needs step-by-step navigation guidance",
+     "resolution_text": "This is usually a discoverability issue rather than a bug — the feature likely exists but isn't where the user expects. Point them to the specific menu path (Settings > [relevant section]) for the feature they're looking for, and mention that a search bar within Settings (if available) can help locate options faster than manual navigation."},
+
+    # Software
+    {"category": "Software", "issue_summary": "Device or app displays a vague or unlabeled error message with no clear explanation of what went wrong",
+     "resolution_text": "Ask the user for the exact error code or message text if not already provided, since generic messages like 'an unspecified error' usually map to a specific internal error code in the device or app's logs. In the meantime, a restart of the device or app often clears transient unspecified errors. If the message persists after a restart, check for a pending software update, since vague error messages are sometimes a symptom of an outdated app version encountering an unhandled edge case."},
+
+    # Account Access
+    {"category": "Account Access", "issue_summary": "User expresses general worry about whether their personal data is safe or secure on a connected device, without describing a specific breach or incident",
+     "resolution_text": "This is a proactive security concern rather than a report of an actual incident, so reassure the user and walk them through good baseline practices: confirm their device firmware and companion app are on the latest version, enable two-factor authentication if the account supports it, and review which third-party apps or services have access to their account data. If they have a specific reason for concern (e.g. a suspicious login notification), ask for those details separately, since that would warrant a different, more urgent response."},
 ]
