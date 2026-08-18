@@ -7,6 +7,8 @@ from app.db.database import Base, engine, get_db
 from app.db import models
 from app.schemas import TicketCreate, TicketResponse
 from app.graph import run_triage_pipeline
+from fastapi.middleware.cors import CORSMiddleware
+
 
 logging.basicConfig(level=logging.INFO)
 
@@ -16,10 +18,15 @@ app = FastAPI(
     version="0.1.0",
 )
 
-# Week 1: create tables directly from models. Once the schema stabilizes,
+#create tables directly from models. Once the schema stabilizes,
 # switch to Alembic migrations instead of calling this on every startup.
 Base.metadata.create_all(bind=engine)
-
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/health")
 def health_check():
@@ -29,7 +36,7 @@ def health_check():
 @app.post("/submit-ticket", response_model=TicketResponse)
 def submit_ticket(ticket_in: TicketCreate, db: Session = Depends(get_db)):
     """
-    Week 2 scope: run the full agent pipeline (Classifier -> Retriever ->
+    run the full agent pipeline (Classifier -> Retriever ->
     Resolver) via the LangGraph state graph in app/graph.py, and persist one
     AgentDecision audit row per agent so the pipeline's reasoning stays
     inspectable after the fact.
