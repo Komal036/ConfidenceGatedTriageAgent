@@ -9,9 +9,6 @@
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-pgvector-blue?style=flat-square&logo=postgresql)
 ![Dataset](https://img.shields.io/badge/Dataset-8.4k_tickets-yellow?style=flat-square)
 
-<!-- Once you have a final eval number, add a badge like the SMAPE one in the reference repo, e.g.: -->
-<!-- ![Escalation Precision](https://img.shields.io/badge/Escalation_Precision-XX%25-brightgreen?style=flat-square) -->
-
 ---
 
 ## 📌 Table of Contents
@@ -38,7 +35,7 @@
 
 This project is a multi-agent system that automates first-line IT support ticket handling. Given an incoming ticket (subject, description, product/category context), the system classifies it, checks for a known resolution, attempts an autonomous fix via tool calls, and critically **knows when not to act**, escalating to a human agent when its own confidence is low.
 
-**Result (20-ticket held-out eval): 60% category accuracy, 100% false-escalation rate, 0% false-confidence rate.** The system currently errs heavily toward caution given a 45-entry knowledge base's ~20-24% real-world match rate — see Results for the full breakdown of why that's a deliberate, honest tradeoff rather than a failure, and Future Improvements for the concrete next steps (KB expansion, category rubric refinement) that would move these numbers.
+**Result (20-ticket held-out eval): 70% category accuracy, 50% priority accuracy, 45% escalation decision accuracy, 100% false-escalation rate, 0% false-confidence rate.** The system currently errs heavily toward caution given a 50-entry knowledge base's ~26% real-world match rate — see Results for the full breakdown of why that's a deliberate, honest tradeoff rather than a failure, and Future Improvements for the concrete next steps (a stronger reranker, further KB expansion) that would move these numbers.
 
 *Note: this project's LLM originally ran on Llama 3.3 70B and was migrated to GPT-OSS 120B mid-project after Groq deprecated the former (see Key Design Decisions #5). Some results below were measured on one model, some on the other — each results section is labeled with which model produced it.*
 
@@ -159,6 +156,8 @@ it-triage-agent/
 - `sample_tickets_labeled.csv` — 20 hand-labeled tickets used to eval the Classifier Agent before the full dataset is wired in
 - `test_classifier.py` — standalone script that runs `classify_ticket()` directly (no server needed) and reports category/priority accuracy
 - `classifier_eval_results.csv` — output of the above, per-ticket predicted vs. expected
+- `diagnose_retrieval_scores.py` — prints the raw best-match similarity for every tune-set ticket, bypassing the Retriever's threshold cutoff, for debugging coverage gaps
+- `seed_knowledge_base.py` / `seed_knowledge_base_data.py` — clears and re-seeds the pgvector knowledge base table from the hand-written entry list
 
 ---
 
@@ -281,7 +280,7 @@ meaningfully better false-escalation rate.
 
 ## 📊 Evaluation Strategy
 
-- **Eval sets:** 70 real tickets sampled from the Kaggle Customer Support Ticket Dataset (`data/pull_new_tickets.py`), split into `eval_tune.csv` (50 tickets, used to sweep the Escalation Judge's threshold) and `eval_holdout.csv` (20 tickets, never touched during tuning, used only for final reported numbers) — this split exists specifically so reported accuracy isn't inflated by having been part of the same search that picked the threshold.
+- **Eval sets:** 70 real tickets sampled from the Kaggle Customer Support Ticket Dataset (`data/pull_new_tickets.py`), split into `eval_tune.csv` (50 tickets, used to sweep the Escalation Judge's threshold and diagnose KB coverage) and `eval_holdout.csv` (20 tickets, never touched during tuning, used only for final reported numbers) — this split exists specifically so reported accuracy isn't inflated by having been part of the same search that picked the threshold.
 - **Labeling method:** hybrid. Labels were LLM-drafted (category, priority, escalate) then manually reviewed and corrected row by row against the project's own rubric (see Agent Design Deep-Dive) before being treated as ground truth.
 - **Data cleaning:** the raw Kaggle descriptions required a cleaning pass (`data/clean_eval_descriptions.py`) before use — see Key Learnings for why, and Results for the retrieval-generalization gap this process uncovered.
 - **Metrics tracked:** category accuracy, priority accuracy, escalation decision accuracy, false-escalation rate, false-confidence rate — tracked separately rather than as one blended accuracy number, since a false resolution and a false escalation are not equally costly (see Metrics Explained).
@@ -326,8 +325,7 @@ base seeded across all 7 categories.
 failures: "screen flickering after update" has no matching entry (the closest
 KB entry covers monitor *detection*, not flickering), and "feature request for
 dark mode" has no matching entry because the KB's single General Inquiry entry
-covers plan upgrades only. Both are addressed in Future Improvements (expand
-KB with edge-case tickets).
+covers plan upgrades only.
 
 **The 1 category mismatch** is more interesting: "wrong item billed" (Billing)
 matched a General Inquiry entry about upgrading plans (similarity 0.619)
@@ -340,37 +338,59 @@ request). This is a legitimate retrieval error, not a coverage gap, and it
 happened right at the threshold edge (0.619 vs. 0.55) — a case for future
 threshold tuning or reranking rather than just adding more KB entries.
 
-### Escalation Judge / KB coverage on real-world tickets
-
-*Note: this sweep also predates the GPT-OSS migration and ran on
-`llama-3.3-70b-versatile`.*
+### KB coverage on real-world tickets (two expansion rounds)
 
 Running the pipeline against 50 real (not hand-written) Kaggle-sourced
 tickets exposed a generalization gap: the original 25-entry KB, hand-written
-to match the phrasing of eval tickets, matched **0% of
-real tickets** above the Retriever's own 0.55 threshold. Expanding the KB to
-45 entries with more naturally-phrased issue summaries (targeting patterns
-actually observed in the real ticket sample — firmware-triggered faults,
-factory-reset-didn't-help, peripheral/charging issues, vague security
-concerns — written independently, not copied from the eval tickets
-themselves) raised the real-ticket match rate to **24% (12/50)**.
+to match the phrasing of eval tickets, matched **0% of real tickets** above
+the Retriever's 0.55 threshold.
 
-This is the honest headline result , not the threshold itself: for
-roughly three-quarters of real-world ticket phrasing, this KB currently has
-no confident match, and the Escalation Judge correctly routes those to a
-human by design rather than forcing a weak match. The KB-coverage limit
-matters more than the exact threshold value — expanding KB coverage further
-(see Future Improvements) will move the needle more than re-tuning the
-threshold at this stage.
+**Round 1** expanded the KB to 45 entries with more naturally-phrased issue
+summaries (targeting patterns actually observed in the real ticket sample —
+firmware-triggered faults, factory-reset-didn't-help, peripheral/charging
+issues, vague security concerns — written independently, not copied from
+the eval tickets themselves), raising the real-ticket match rate to **24%
+(12/50)**.
 
-### Final holdout evaluation (current model: GPT-OSS 120B)
+**Round 2** analyzed the 38 remaining misses directly against their real
+descriptions (not just subjects, since Kaggle's synthetic subject labels are
+frequently mismatched to the actual complaint — e.g. a subject of "Delivery
+problem" on a ticket that's actually about data loss). This surfaced further
+concrete gaps (declining battery life vs. sudden drain, first-setup WiFi
+failures, vague/unlabeled error messages, "can't find a feature" navigation
+requests, widespread multi-user bugs, general security worry). Five targeted
+entries were added, bringing the KB to 50 entries and raising the match rate
+to **26% (13/50)** — a real but small gain relative to Round 1.
+
+**Diagnosing the diminishing returns:** a controlled experiment
+(`data/diagnose_row3_anomaly.py`) isolated why. One remaining miss — a
+ticket asking "I'm unable to find the option to perform the desired action,
+could you guide me through the steps?" — scored only **0.216** against a KB
+entry that is, in meaning, a near-exact paraphrase: *"user can't locate a
+specific feature, setting, or option and needs step-by-step navigation
+guidance."* A sanity check against clearly unrelated KB entries (WiFi,
+battery, billing) confirmed the embedding model's *ranking* is correct
+(the real match scores far higher than unrelated ones), but its **absolute
+similarity score for this kind of paraphrase pair is intrinsically low** —
+`all-MiniLM-L6-v2` leans more on lexical/structural overlap than deep
+paraphrase understanding, since the two sentences share almost no surface
+vocabulary despite matching in meaning.
+
+**This is the real ceiling on further KB-only improvements**: no amount of
+additional hand-written entries fixes a case where the correct entry
+already exists but the embedding model itself under-scores the semantic
+match. Closing this gap further would need either a stronger embedding
+model or a reranking step (e.g. a cross-encoder) rather than more KB
+content — see Future Improvements.
+
+### Final holdout evaluation (current model: GPT-OSS 120B, 50-entry KB)
 
 Evaluated end-to-end (Classifier → Retriever → Resolver → Escalation Judge)
 against 20 real Kaggle support tickets held out from threshold tuning.
 
 | Metric                          | Value        |
 |-----------------------------------|--------------|
-| Classifier category accuracy      | 60.0% (12/20) |
+| Classifier category accuracy      | 70.0% (14/20) |
 | Classifier priority accuracy      | 50.0% (10/20) |
 | Escalation decision accuracy      | 45.0% (9/20) |
 | False-escalation rate             | 100% (11/11) |
@@ -386,27 +406,28 @@ than to auto-resolve incorrectly.
 **On escalation:** the 100% false-escalation rate looks alarming in
 isolation, but the underlying cause is consistent and traceable, not a
 broken system. Of the 20 holdout tickets, only 4 retrieved any KB match at
-all (a 20% hit rate — close to the ~24% match rate observed on the 50-ticket
-tune set, within expected small-sample variance). All 4 of those matches
-scored between 0.555 and 0.572 — just under the 0.60 escalation threshold.
-The other 16 tickets found no match at all, which alone forces escalation
-regardless of priority or threshold tuning (see Escalation Judge design
-notes). This points to **knowledge base coverage**, not the escalation
-threshold or the Judge's logic, as the actual bottleneck — the tune set
-already demonstrated real tickets clearing 0.60 (up to 0.678), so the
-threshold itself isn't the limiting factor here.
+all (a 20% hit rate — close to the ~26% match rate observed on the 50-ticket
+tune set after two rounds of KB expansion, within expected small-sample
+variance). The other 16 tickets found no match at all, which alone forces
+escalation regardless of priority or threshold tuning. Two rounds of KB
+expansion (0%→24%→26%) and a controlled embedding-model diagnostic (see
+above) point to this as a genuine, largely embedding-model-limited ceiling
+rather than an unexamined gap — the threshold itself isn't the limiting
+factor here.
 
-**On category accuracy (60.0%, 12/20):** of the 8 misses, 2 defaulted to
-"Hardware" under ambiguous or thinly-worded descriptions — a small signal
-that the category rubric may lean on a default under uncertainty, similar
-in kind (though smaller in scale) to the "Medium" priority default pattern.
-Not yet enough evidence to call this a confirmed bias, but worth watching
-as the eval set grows.
+**On category accuracy (70.0%, 14/20):** up from 60.0% in the previous run
+on the same holdout set. This shift is not attributable to the KB expansion
+(the Classifier doesn't use the knowledge base at all) and is more likely
+run-to-run variance from the LLM call, since `temperature=0.1` doesn't
+guarantee full determinism. Of the 6 remaining misses, no single dominant
+default pattern was observed this round (unlike the earlier "Hardware"
+default-under-uncertainty signal seen in a prior run) — not yet enough
+evidence to confirm or rule out a systematic bias.
 
-**On priority accuracy (50.0%, 10/20):** predictions skewed toward
-High/Critical on tickets expected to be Medium. This did not affect any
-escalation decisions in this run, since none of the 20 tickets reached the
-priority-based override path (all escalations were driven by match
+**On priority accuracy (50.0%, 10/20):** predictions continue to skew
+toward High/Critical on tickets expected to be Medium. This did not affect
+any escalation decisions in this run, since none of the 20 tickets reached
+the priority-based override path (all escalations were driven by match
 confidence, not priority) — but it's a real classifier weakness worth
 addressing independently. See Future Improvements.
 
@@ -465,9 +486,9 @@ out first.
 The trade-off: this pipeline will escalate tickets a fully automated system
 would have resolved correctly. That's the intended cost — the project treats
 false escalation (a human reviews an easy ticket) as far cheaper than false
-confidence (the system tells a user something wrong). Week 3's holdout eval
-is the clearest demonstration of this in practice: 0% false confidence, at
-the cost of a high false-escalation rate on a KB that hasn't reached full
+confidence (the system tells a user something wrong). The holdout eval is
+the clearest demonstration of this in practice: 0% false confidence, at the
+cost of a high false-escalation rate on a KB that hasn't reached full
 real-world coverage yet.
 
 ### 3. Why pgvector instead of a dedicated vector DB (Pinecone/Weaviate)?
@@ -477,7 +498,7 @@ Postgres via Neon. Adding pgvector meant the `Resolution` knowledge base could
 live in the *same* database as one more table with a `Vector(384)` column,
 rather than standing up a second system and syncing state between them.
 
-For a knowledge base this size (45 entries as of Week 3, realistically a few
+For a knowledge base this size (50 entries as of Week 4, realistically a few
 hundred even after further expansion), a dedicated vector DB's main selling
 points — approximate nearest-neighbor indexes for millions of vectors,
 horizontal sharding — don't apply. pgvector's exact cosine-distance search
@@ -501,13 +522,13 @@ embedding step and the Escalation Judge's rule check in between) doesn't
 compound into a noticeably slow request — this matters more for a chained
 pipeline than it would for a single standalone call.
 
-Second, cost: at this project's scale (hand-labeled eval sets, a 45-entry
+Second, cost: at this project's scale (hand-labeled eval sets, a 50-entry
 KB, no production traffic), Groq's free tier and open-weight model pricing
 make iteration cheap. The classifier's two-iteration prompt rework
-(baseline → rubric-guided), the resolver's prompt tuning, and the Week 3
-threshold sweep (50 tickets × Classifier + Retriever calls) all involved
-re-running eval sets repeatedly — a cost-sensitive workflow benefits from a
-cheaper model here.
+(baseline → rubric-guided), the resolver's prompt tuning, and the threshold
+sweep (50 tickets × Classifier + Retriever calls, run more than once across
+KB expansion rounds) all involved re-running eval sets repeatedly — a
+cost-sensitive workflow benefits from a cheaper model here.
 
 The trade-off is real: smaller open-weight models are less capable than
 GPT-4, and it shows in places — the classifier's priority over-escalation
@@ -559,14 +580,24 @@ token budgets tuned for a prior model.
 ## 🔮 Future Improvements
 
 ### Short term
-- [ ] Expand knowledge base with synthetic edge-case tickets
+- [ ] Add a reranking step (e.g. a cross-encoder) for borderline retrieval
+      cases — the row-3 diagnostic (see Results) showed the embedding model
+      correctly ranks the right KB entry highest but under-scores its
+      absolute similarity for low-lexical-overlap paraphrases; a reranker
+      operating on the top-k candidates could recover these without
+      further KB expansion
 - [ ] Add per-category confidence thresholds instead of one global threshold
-- [ ] Refine category classification rubric to reduce "Hardware" default-under-uncertainty bias, mirroring the Week 1 fix for priority's "Medium" bias
-- [ ] Expand holdout eval set beyond 20 tickets — current sample is too small to reliably observe the auto-resolve path given ~20-24% KB match rate
+- [ ] Expand holdout eval set beyond 20 tickets — current sample is too
+      small to reliably observe the auto-resolve path given a ~20-26% KB
+      match rate
+- [ ] Investigate the classifier's priority over-escalation bias with a
+      few-shot prompting pass, since rubric guidance alone hasn't fully
+      resolved it across two model generations
 
 ### Medium term
 - [ ] Replace mock tools with a real ticketing system integration (Zendesk/Freshdesk sandbox API)
 - [ ] Add a feedback loop where human corrections retrain the Retriever's knowledge base
+- [ ] Evaluate a larger/stronger sentence embedding model as an alternative to `all-MiniLM-L6-v2`, trading some latency for better paraphrase sensitivity
 
 ### Long term
 - [ ] Multi-turn ticket handling (follow-up questions before resolving)
