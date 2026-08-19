@@ -12,21 +12,16 @@ from fastapi.middleware.cors import CORSMiddleware
 
 logging.basicConfig(level=logging.INFO)
 
-app = FastAPI(
-    title="IT Support Triage Agent",
-    description="Multi-agent system for ticket classification, retrieval, and confidence-gated escalation.",
-    version="0.1.0",
-)
 
-#create tables directly from models. Once the schema stabilizes,
-# switch to Alembic migrations instead of calling this on every startup.
-Base.metadata.create_all(bind=engine)
+app = FastAPI()
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:3000",
         "https://confidence-gated-triage-agent.vercel.app",
+        "http://localhost:3000",  # keep this for local dev
     ],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
