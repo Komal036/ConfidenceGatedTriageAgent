@@ -2,6 +2,13 @@
 
 ### Multi-Agent System for Confidence-Gated Ticket Classification, Retrieval, and Escalation
 
+## 🔗 Live Demo
+
+- **App:** https://confidence-gated-triage-agent.vercel.app
+- **API docs:** https://confidencegatedtriageagent.onrender.com/docs
+
+*Note: the backend runs on a free tier that sleeps after inactivity — the first request may take up to a minute to wake up.*
+
 ![Python](https://img.shields.io/badge/Python-3.11-blue?style=flat-square&logo=python)
 ![FastAPI](https://img.shields.io/badge/FastAPI-backend-009688?style=flat-square&logo=fastapi)
 ![LangGraph](https://img.shields.io/badge/LangGraph-orchestration-purple?style=flat-square)
@@ -14,6 +21,7 @@
 ## 📌 Table of Contents
 
 - [Overview](#-overview)
+- [Live Demo](#-live-demo)
 - [Problem Statement](#-problem-statement)
 - [Architecture](#️-architecture)
 - [Tech Stack](#️-tech-stack)
