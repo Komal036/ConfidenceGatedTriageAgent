@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 
 class TicketCreate(BaseModel):
     subject: str = Field(..., min_length=3, max_length=200)
-    description: str = Field(..., min_length=5)
+    description: str = Field(..., min_length=5, max_length=1000)  # added max_length
     product: Optional[str] = None
     channel: Optional[str] = None
 

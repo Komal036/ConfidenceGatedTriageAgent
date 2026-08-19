@@ -106,6 +106,12 @@ export default function TicketForm({
           <Send size={14} strokeWidth={2.5} />
           {submitting ? "Submitting…" : "Submit Ticket"}
         </button>
+
+        {submitting && (
+          <p className="text-center font-mono text-[11px] text-signal-muted leading-relaxed">
+            First request can take up to a minute — backend runs on a free tier that sleeps when idle.
+          </p>
+        )}
       </form>
     </div>
   );
