@@ -16,6 +16,8 @@ class TicketResponse(BaseModel):
     category: Optional[str]
     priority: Optional[str]
     status: str
+    escalated: bool
+    escalation_reason: str
 
     # Added : surfaces what the Retriever/Resolver decided, so the pipeline's reasoning is visible in the API response 
     # itself and not just in the AgentDecision audit rows.
