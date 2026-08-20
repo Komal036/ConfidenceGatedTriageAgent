@@ -138,9 +138,8 @@ Stated bluntly, up front, rather than only inferable from the Results section be
 | LLM inference       | Groq API — GPT-OSS 120B (`groq==1.6.0`), migrated from Llama 3.3 70B after Groq deprecated it mid-project |
 | Embeddings          | sentence-transformers (all-MiniLM-L6-v2)                                                                  |
 | Evaluation          | pandas, custom accuracy scripts                                                                           |
-| Dashboard           | Streamlit                                                                                                 |
-| Deployment          | Render                                                                                                    |
-| CI                  | GitHub Actions                                                                                            |
+| Testing / CI        | pytest, GitHub Actions                                                                                    |
+| Deployment          | Vercel (frontend), Render (backend)                                                                       |
 | Environment         | Python 3.11, managed via Conda (`conda create -n gated python=3.11`)                                      |
 
 ---
@@ -148,45 +147,66 @@ Stated bluntly, up front, rather than only inferable from the Results section be
 ## 📁 Project Structure
 
 ```
-it-triage-agent/
+ConfidenceGatedTriageAgent/
 │
 ├── app/
 │   ├── main.py                  # FastAPI entrypoint
+│   ├── config.py                # pydantic-settings (DATABASE_URL, GROQ_API_KEY)
+│   ├── schemas.py                # request/response models
+│   ├── graph.py                  # LangGraph state graph definition
 │   ├── agents/
 │   │   ├── classifier.py
 │   │   ├── retriever.py
 │   │   ├── resolver.py
 │   │   └── escalation_judge.py
-│   ├── graph.py                 # LangGraph state graph definition
-│   ├── tools/                   # mock tool APIs
-│   └── db/                      # models, pgvector setup
+│   ├── tools/
+│   │   └── mock_tools.py         # check_system_status, reset_password, lookup_account
+│   └── db/
+│       ├── database.py           # engine, SessionLocal, get_db
+│       └── models.py             # Ticket, AgentDecision, Resolution
 │
-├── tests/                       # pytest unit tests (routes, DB schema, agents)
+├── frontend/                     # Next.js console (Vercel deploy target)
+│   ├── app/
+│   │   ├── page.tsx               # ties TicketForm + ConfidenceGate + ResultPanel together
+│   │   └── layout.tsx
+│   ├── components/
+│   │   ├── TicketForm.tsx
+│   │   ├── ConfidenceGate.tsx     # animated blast-door confidence gate
+│   │   ├── PipelineStages.tsx     # Classify → Retrieve → Resolve → Judge signal path
+│   │   ├── ResultPanel.tsx
+│   │   └── TiltCard.tsx           # cursor-tracked tilt/glare effect
+│   └── lib/
+│       └── api.ts                 # submitTicket(), TicketResult type
+│
+├── tests/                        # pytest unit tests (routes, DB schema, agents)
+│   ├── conftest.py
 │   ├── test_routes.py
 │   ├── test_escalation_judge.py
 │   ├── test_classifier_agent.py
 │   └── test_db_models.py
 │
-├── .github/workflows/ci.yml     # runs the pytest suite on push/PR
+├── .github/workflows/ci.yml      # runs the pytest suite on push/PR
 │
-├── eval/
-│   ├── eval_set.csv              # held-out tickets for testing
-│   ├── run_eval.py
-│   └── results/                  # eval output, confusion matrices
+├── data/                         # eval scripts, eval sets, KB seed data — NOT unit tests
+│   ├── eval_tune.csv / eval_holdout.csv
+│   ├── sample_tickets_labeled.csv
+│   ├── test_classifier.py / test_pipeline.py   # standalone accuracy-eval scripts
+│   ├── seed_knowledge_base.py / seed_knowledge_base_data.py
+│   ├── sweep_escalation_threshold.py
+│   ├── diagnose_retrieval_scores.py / diagnose_row3_anomaly.py / diagnose_subject_noise.py
+│   ├── clean_data.py / clean_eval_descriptions.py
+│   ├── pull_new_tickets.py
+│   ├── final_holdout_eval.py
+│   └── enable_pgvector.sql
 │
-├── dashboard/
-│   └── streamlit_app.py
-│
-├── notebooks/
-│   └── data_exploration.ipynb
-│
+├── .env.example
 ├── README.md
 └── requirements.txt
 ```
 
+- `data/test_classifier.py` / `data/test_pipeline.py` — standalone accuracy-eval scripts, not pytest tests. They call the agents directly against labeled tickets and print/report accuracy — no assertions, no CI integration. See Evaluation Strategy for how these differ in purpose from `tests/`.
 - `tests/` — pytest unit tests, distinct in purpose from the eval scripts above: these check code correctness (route validation, response shape, escalation logic, DB schema), not model accuracy. The Groq client and DB session are mocked so the suite runs offline in CI with no API key or live database. Run locally with `pytest tests/ -v`.
 - `sample_tickets_labeled.csv` — 20 hand-labeled tickets used to eval the Classifier Agent before the full dataset is wired in
-- `test_classifier.py` — standalone script that runs `classify_ticket()` directly (no server needed) and reports category/priority accuracy
 - `classifier_eval_results.csv` — output of the above, per-ticket predicted vs. expected
 - `diagnose_retrieval_scores.py` — prints the raw best-match similarity for every tune-set ticket, bypassing the Retriever's threshold cutoff, for debugging coverage gaps
 - `seed_knowledge_base.py` / `seed_knowledge_base_data.py` — clears and re-seeds the pgvector knowledge base table from the hand-written entry list
@@ -196,7 +216,7 @@ it-triage-agent/
 ## ⚙️ Installation
 
 ```bash
-git clone https://github.com/<Komal036>/ConfidenceGatedTriageAgent.git
+git clone https://github.com/Komal036/ConfidenceGatedTriageAgent.git
 cd ConfidenceGatedTriageAgent
 
 # Create and activate a dedicated environment (Python 3.11)
