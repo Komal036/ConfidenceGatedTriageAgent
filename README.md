@@ -15,6 +15,7 @@
 ![Groq](https://img.shields.io/badge/Groq-GPT--OSS_120B-orange?style=flat-square)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-pgvector-blue?style=flat-square&logo=postgresql)
 ![Dataset](https://img.shields.io/badge/Dataset-8.4k_tickets-yellow?style=flat-square)
+[![CI](https://github.com/Komal036/ConfidenceGatedTriageAgent/actions/workflows/ci.yml/badge.svg)](https://github.com/Komal036/ConfidenceGatedTriageAgent/actions/workflows/ci.yml)
 
 ---
 
@@ -22,6 +23,7 @@
 
 - [Overview](#-overview)
 - [Live Demo](#-live-demo)
+- [Limitations](#-limitations)
 - [Problem Statement](#-problem-statement)
 - [Architecture](#️-architecture)
 - [Tech Stack](#️-tech-stack)
@@ -46,6 +48,18 @@ This project is a multi-agent system that automates first-line IT support ticket
 **Result (20-ticket held-out eval): 70% category accuracy, 50% priority accuracy, 45% escalation decision accuracy, 100% false-escalation rate, 0% false-confidence rate.** The system currently errs heavily toward caution given a 50-entry knowledge base's ~26% real-world match rate — see Results for the full breakdown of why that's a deliberate, honest tradeoff rather than a failure, and Future Improvements for the concrete next steps (a stronger reranker, further KB expansion) that would move these numbers.
 
 *Note: this project's LLM originally ran on Llama 3.3 70B and was migrated to GPT-OSS 120B mid-project after Groq deprecated the former (see Key Design Decisions #5). Some results below were measured on one model, some on the other — each results section is labeled with which model produced it.*
+
+---
+
+## ⚠️ Limitations
+
+Stated bluntly, up front, rather than only inferable from the Results section below:
+
+- **This is a rigorously evaluated prototype, not a production system.** There is no auth, no rate limiting, and no observability/logging stack beyond the `AgentDecision` audit table. Don't read "confidence-gated" or "evaluated" as "production-ready" — they're not the same claim.
+- **The knowledge base is small and hand-written (50 entries).** It matches roughly a quarter of real-world-phrased tickets from the Kaggle eval set. This is the actual ceiling on end-to-end accuracy right now — see Results and Future Improvements for why (an embedding-model limitation, not a threshold-tuning or query-construction bug).
+- **Ground truth labels carry a circularity risk that isn't fully resolved.** Eval labels were LLM-drafted, then manually reviewed and corrected by the same person who wrote the classification rubric the classifier itself is prompted with (see Evaluation Strategy). That means classifier and ground truth share an author and a mental model of what "correct" looks like — an independent labeler, or an inter-rater agreement check against a second reviewer, would give a cleaner signal than self-review alone can. Treat the reported accuracy numbers as directionally honest but not fully independent.
+- **This reads as agent/backend engineering work, not full-stack.** The frontend (Next.js) is a real, hand-built interface, but the bulk of the engineering investment — and the code Komal can speak to in depth — is the backend pipeline, retrieval, and evaluation harness.
+- **Unit test coverage exists but has a real edge:** `tests/` covers FastAPI routes, DB schema, and the Escalation Judge's decision logic, all offline via mocking. It does not include a live-database integration test in CI (no pgvector-enabled Postgres service is wired into the GitHub Actions job) or assertions about LLM output *quality* — that's what the eval scripts in `data/` are for, and their numbers are the ones to trust for "does this actually work," not the pytest suite.
 
 ---
 
@@ -146,6 +160,14 @@ it-triage-agent/
 │   ├── tools/                   # mock tool APIs
 │   └── db/                      # models, pgvector setup
 │
+├── tests/                       # pytest unit tests (routes, DB schema, agents)
+│   ├── test_routes.py
+│   ├── test_escalation_judge.py
+│   ├── test_classifier_agent.py
+│   └── test_db_models.py
+│
+├── .github/workflows/ci.yml     # runs the pytest suite on push/PR
+│
 ├── eval/
 │   ├── eval_set.csv              # held-out tickets for testing
 │   ├── run_eval.py
@@ -161,6 +183,7 @@ it-triage-agent/
 └── requirements.txt
 ```
 
+- `tests/` — pytest unit tests, distinct in purpose from the eval scripts above: these check code correctness (route validation, response shape, escalation logic, DB schema), not model accuracy. The Groq client and DB session are mocked so the suite runs offline in CI with no API key or live database. Run locally with `pytest tests/ -v`.
 - `sample_tickets_labeled.csv` — 20 hand-labeled tickets used to eval the Classifier Agent before the full dataset is wired in
 - `test_classifier.py` — standalone script that runs `classify_ticket()` directly (no server needed) and reports category/priority accuracy
 - `classifier_eval_results.csv` — output of the above, per-ticket predicted vs. expected
@@ -289,7 +312,7 @@ meaningfully better false-escalation rate.
 ## 📊 Evaluation Strategy
 
 - **Eval sets:** 70 real tickets sampled from the Kaggle Customer Support Ticket Dataset (`data/pull_new_tickets.py`), split into `eval_tune.csv` (50 tickets, used to sweep the Escalation Judge's threshold and diagnose KB coverage) and `eval_holdout.csv` (20 tickets, never touched during tuning, used only for final reported numbers) — this split exists specifically so reported accuracy isn't inflated by having been part of the same search that picked the threshold.
-- **Labeling method:** hybrid. Labels were LLM-drafted (category, priority, escalate) then manually reviewed and corrected row by row against the project's own rubric (see Agent Design Deep-Dive) before being treated as ground truth.
+- **Labeling method:** hybrid. Labels were LLM-drafted (category, priority, escalate) then manually reviewed and corrected row by row against the project's own rubric (see Agent Design Deep-Dive) before being treated as ground truth. *This introduces a circularity risk worth naming directly: the same rubric shapes both the classifier's prompt and the reviewer's corrections, so accuracy numbers reflect internal consistency with that rubric more than independent ground truth — see Limitations.*
 - **Data cleaning:** the raw Kaggle descriptions required a cleaning pass (`data/clean_eval_descriptions.py`) before use — see Key Learnings for why, and Results for the retrieval-generalization gap this process uncovered.
 - **Metrics tracked:** category accuracy, priority accuracy, escalation decision accuracy, false-escalation rate, false-confidence rate — tracked separately rather than as one blended accuracy number, since a false resolution and a false escalation are not equally costly (see Metrics Explained).
 
