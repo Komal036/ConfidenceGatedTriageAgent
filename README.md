@@ -7,7 +7,7 @@
 - **App:** https://confidence-gated-triage-agent.vercel.app
 - **API docs:** https://confidencegatedtriageagent.onrender.com/docs
 
-*Note: the backend runs on a free tier that sleeps after inactivity — the first request may take up to a minute to wake up.*
+_Note: the backend runs on a free tier that sleeps after inactivity — the first request may take up to a minute to wake up._
 
 ![Python](https://img.shields.io/badge/Python-3.11-blue?style=flat-square&logo=python)
 ![FastAPI](https://img.shields.io/badge/FastAPI-backend-009688?style=flat-square&logo=fastapi)
@@ -35,6 +35,7 @@
 - [Evaluation Strategy](#-evaluation-strategy)
 - [Results](#-results)
 - [Key Design Decisions](#-key-design-decisions)
+- [Key Learnings](#-key-learnings)
 - [Future Improvements](#-future-improvements)
 - [Metrics Explained](#-metrics-explained)
 - [References](#-references)
@@ -47,7 +48,7 @@ This project is a multi-agent system that automates first-line IT support ticket
 
 **Result (20-ticket held-out eval): 70% category accuracy, 50% priority accuracy, 45% escalation decision accuracy, 100% false-escalation rate, 0% false-confidence rate.** The system currently errs heavily toward caution given a 50-entry knowledge base's ~26% real-world match rate — see Results for the full breakdown of why that's a deliberate, honest tradeoff rather than a failure, and Future Improvements for the concrete next steps (a stronger reranker, further KB expansion) that would move these numbers.
 
-*Note: this project's LLM originally ran on Llama 3.3 70B and was migrated to GPT-OSS 120B mid-project after Groq deprecated the former (see Key Design Decisions #5). Some results below were measured on one model, some on the other — each results section is labeled with which model produced it.*
+_Note: this project's LLM originally ran on Llama 3.3 70B and was migrated to GPT-OSS 120B mid-project after Groq deprecated the former (see Key Design Decisions #5). Some results below were measured on one model, some on the other — each results section is labeled with which model produced it._
 
 ---
 
@@ -59,20 +60,20 @@ Stated bluntly, up front, rather than only inferable from the Results section be
 - **The knowledge base is small and hand-written (50 entries).** It matches roughly a quarter of real-world-phrased tickets from the Kaggle eval set. This is the actual ceiling on end-to-end accuracy right now — see Results and Future Improvements for why (an embedding-model limitation, not a threshold-tuning or query-construction bug).
 - **Ground truth labels carry a circularity risk that isn't fully resolved.** Eval labels were LLM-drafted, then manually reviewed and corrected by the same person who wrote the classification rubric the classifier itself is prompted with (see Evaluation Strategy). That means classifier and ground truth share an author and a mental model of what "correct" looks like — an independent labeler, or an inter-rater agreement check against a second reviewer, would give a cleaner signal than self-review alone can. Treat the reported accuracy numbers as directionally honest but not fully independent.
 - **This reads as agent/backend engineering work, not full-stack.** The frontend (Next.js) is a real, hand-built interface, but the bulk of the engineering investment — and the code Komal can speak to in depth — is the backend pipeline, retrieval, and evaluation harness.
-- **Unit test coverage exists but has a real edge:** `tests/` covers FastAPI routes, DB schema, and the Escalation Judge's decision logic, all offline via mocking. It does not include a live-database integration test in CI (no pgvector-enabled Postgres service is wired into the GitHub Actions job) or assertions about LLM output *quality* — that's what the eval scripts in `data/` are for, and their numbers are the ones to trust for "does this actually work," not the pytest suite.
+- **Unit test coverage exists but has a real edge:** `tests/` covers FastAPI routes, DB schema, and the Escalation Judge's decision logic, all offline via mocking. It does not include a live-database integration test in CI (no pgvector-enabled Postgres service is wired into the GitHub Actions job) or assertions about LLM output _quality_ — that's what the eval scripts in `data/` are for, and their numbers are the ones to trust for "does this actually work," not the pytest suite.
 
 ---
 
 ## 📋 Problem Statement
 
-| Property | Details |
-|---|---|
-| Task | Multi-class classification + retrieval + gated autonomous action |
-| Input | Ticket subject, description, product/category metadata |
-| Output | Category, priority, resolution action OR escalation with reasoning |
-| Metric | Resolution accuracy, false-escalation rate, false-confidence rate |
-| Dataset | [8,469 tickets — Kaggle Customer Support Ticket Dataset] |
-| Challenge | Balancing autonomy against the cost of being confidently wrong |
+| Property  | Details                                                            |
+| --------- | ------------------------------------------------------------------ |
+| Task      | Multi-class classification + retrieval + gated autonomous action   |
+| Input     | Ticket subject, description, product/category metadata             |
+| Output    | Category, priority, resolution action OR escalation with reasoning |
+| Metric    | Resolution accuracy, false-escalation rate, false-confidence rate  |
+| Dataset   | [8,469 tickets — Kaggle Customer Support Ticket Dataset]           |
+| Challenge | Balancing autonomy against the cost of being confidently wrong     |
 
 ### Why is this hard?
 
@@ -128,19 +129,19 @@ Stated bluntly, up front, rather than only inferable from the Results section be
 
 ## 🛠️ Tech Stack
 
-| Category | Technology |
-|---|---|
-| Backend | FastAPI 0.115, Uvicorn, Pydantic v2, SQLAlchemy 2.0 |
-| Database | PostgreSQL (Neon, pooled connection) |
-| Vector store | pgvector |
-| Agent orchestration | LangGraph, LangChain |
-| LLM inference | Groq API — GPT-OSS 120B (`groq==1.6.0`), migrated from Llama 3.3 70B after Groq deprecated it mid-project |
-| Embeddings | sentence-transformers (all-MiniLM-L6-v2) |
-| Evaluation | pandas, custom accuracy scripts |
-| Dashboard | Streamlit |
-| Deployment | Render |
-| CI | GitHub Actions |
-| Environment | Python 3.11, managed via Conda (`conda create -n gated python=3.11`) |
+| Category            | Technology                                                                                                |
+| ------------------- | --------------------------------------------------------------------------------------------------------- |
+| Backend             | FastAPI 0.115, Uvicorn, Pydantic v2, SQLAlchemy 2.0                                                       |
+| Database            | PostgreSQL (Neon, pooled connection)                                                                      |
+| Vector store        | pgvector                                                                                                  |
+| Agent orchestration | LangGraph, LangChain                                                                                      |
+| LLM inference       | Groq API — GPT-OSS 120B (`groq==1.6.0`), migrated from Llama 3.3 70B after Groq deprecated it mid-project |
+| Embeddings          | sentence-transformers (all-MiniLM-L6-v2)                                                                  |
+| Evaluation          | pandas, custom accuracy scripts                                                                           |
+| Dashboard           | Streamlit                                                                                                 |
+| Deployment          | Render                                                                                                    |
+| CI                  | GitHub Actions                                                                                            |
+| Environment         | Python 3.11, managed via Conda (`conda create -n gated python=3.11`)                                      |
 
 ---
 
@@ -255,6 +256,7 @@ curl -X POST http://localhost:8000/submit-ticket \
 ## 🔍 Agent Design Deep-Dive
 
 ### Classifier Agent
+
 - **Input:** ticket `subject` and `description` (free text)
 - **Output:** structured JSON — `category` (one of 7 fixed options) and `priority` (Low/Medium/High/Critical)
 - **Model:** `openai/gpt-oss-120b` via Groq (migrated from Llama 3.3 70B — see Key Design Decisions), `temperature=0.1` (kept low deliberately — classification should be consistent, not creative), `reasoning_effort="low"` (see Key Design Decisions #5 — GPT-OSS's default reasoning mode was silently consuming the entire token budget before producing output)
@@ -263,13 +265,15 @@ curl -X POST http://localhost:8000/submit-ticket \
 - **Example:** "My laptop keeps disconnecting from WiFi" → `{"category": "Network", "priority": "Medium"}`
 
 ### Retriever Agent
+
 - Similarity threshold used: `0.55` (cosine similarity on `all-MiniLM-L6-v2` embeddings, 384-dim)
 - What happens on no match: returns `None` rather than forcing a weak match. The
   Resolver Agent treats `None` as `"no_match"` and does not attempt to draft a
-  reply — this is a deliberate handoff point for the Escalation Judge 
+  reply — this is a deliberate handoff point for the Escalation Judge
   rather than a failure mode.
 
-### Resolver Agent 
+### Resolver Agent
+
 - Tools available: `check_system_status`, `reset_password`, `lookup_account`, or `none`
 - When it chooses to act vs draft-only: the LLM is given the matched knowledge
   base resolution as grounding and decides per-ticket whether a tool call would
@@ -292,12 +296,12 @@ OR priority == "Critical"           # always human-reviewed regardless of match 
 Kaggle tickets (`data/sweep_escalation_threshold.py`), run through the
 actual Classifier + Retriever pipeline (not the hand labels):
 
-| Threshold | Accuracy | False-Escalation Rate | False-Confidence Rate |
-|---|---|---|---|
-| 0.55 | 46.0% | 76.7% | 20.0% |
-| **0.60** | **48.0%** | 83.3% | **5.0%** |
-| 0.65 | 44.0% | 93.3% | 0.0% |
-| 0.70–0.90 | 40.0% | 100.0% | 0.0% |
+| Threshold | Accuracy  | False-Escalation Rate | False-Confidence Rate |
+| --------- | --------- | --------------------- | --------------------- |
+| 0.55      | 46.0%     | 76.7%                 | 20.0%                 |
+| **0.60**  | **48.0%** | 83.3%                 | **5.0%**              |
+| 0.65      | 44.0%     | 93.3%                 | 0.0%                  |
+| 0.70–0.90 | 40.0%     | 100.0%                | 0.0%                  |
 
 0.65 has a lower false-confidence rate on paper, but it sits above every
 real match similarity observed in the eval set (max 0.678) — at that
@@ -312,7 +316,7 @@ meaningfully better false-escalation rate.
 ## 📊 Evaluation Strategy
 
 - **Eval sets:** 70 real tickets sampled from the Kaggle Customer Support Ticket Dataset (`data/pull_new_tickets.py`), split into `eval_tune.csv` (50 tickets, used to sweep the Escalation Judge's threshold and diagnose KB coverage) and `eval_holdout.csv` (20 tickets, never touched during tuning, used only for final reported numbers) — this split exists specifically so reported accuracy isn't inflated by having been part of the same search that picked the threshold.
-- **Labeling method:** hybrid. Labels were LLM-drafted (category, priority, escalate) then manually reviewed and corrected row by row against the project's own rubric (see Agent Design Deep-Dive) before being treated as ground truth. *This introduces a circularity risk worth naming directly: the same rubric shapes both the classifier's prompt and the reviewer's corrections, so accuracy numbers reflect internal consistency with that rubric more than independent ground truth — see Limitations.*
+- **Labeling method:** hybrid. Labels were LLM-drafted (category, priority, escalate) then manually reviewed and corrected row by row against the project's own rubric (see Agent Design Deep-Dive) before being treated as ground truth. _This introduces a circularity risk worth naming directly: the same rubric shapes both the classifier's prompt and the reviewer's corrections, so accuracy numbers reflect internal consistency with that rubric more than independent ground truth — see Limitations._
 - **Data cleaning:** the raw Kaggle descriptions required a cleaning pass (`data/clean_eval_descriptions.py`) before use — see Key Learnings for why, and Results for the retrieval-generalization gap this process uncovered.
 - **Metrics tracked:** category accuracy, priority accuracy, escalation decision accuracy, false-escalation rate, false-confidence rate — tracked separately rather than as one blended accuracy number, since a false resolution and a false escalation are not equally costly (see Metrics Explained).
 
@@ -322,24 +326,25 @@ meaningfully better false-escalation rate.
 
 ### Classifier Agent accuracy
 
-*Note: the results below were measured on the original `llama-3.3-70b-versatile`
+_Note: the results below were measured on the original `llama-3.3-70b-versatile`
 model, before Groq's deprecation forced a migration to `openai/gpt-oss-120b`
 (see Key Design Decisions #5). They are not directly comparable to the Final
-Holdout Evaluation below, which runs on the current model.*
+Holdout Evaluation below, which runs on the current model._
 
-| Metric | Iteration 1 (baseline prompt) | Iteration 2 (rubric-guided prompt) |
-|---|---|---|
-| Category accuracy | 75% (15/20)* | **100%** (20/20) |
-| Priority accuracy | 60% (12/20)* | **75%** (15/20) |
-| Both correct | 50% (10/20)* | **75%** (15/20) |
+| Metric            | Iteration 1 (baseline prompt) | Iteration 2 (rubric-guided prompt) |
+| ----------------- | ----------------------------- | ---------------------------------- |
+| Category accuracy | 75% (15/20)\*                 | **100%** (20/20)                   |
+| Priority accuracy | 60% (12/20)\*                 | **75%** (15/20)                    |
+| Both correct      | 50% (10/20)\*                 | **75%** (15/20)                    |
 
-*\*Note: the baseline run's raw numbers included 3 tickets with a data-corruption bug (an unescaped comma in the CSV shifted columns); the real baseline, once corrected, was ~88% category / ~71% priority. Both iteration numbers above are on clean data.*
+_\*Note: the baseline run's raw numbers included 3 tickets with a data-corruption bug (an unescaped comma in the CSV shifted columns); the real baseline, once corrected, was ~88% category / ~71% priority. Both iteration numbers above are on clean data._
 
 **What changed between iterations:** the baseline prompt gave the model a list of valid categories/priorities with no criteria for choosing between them. Two failure patterns emerged:
+
 1. **Category:** requests/questions with no actual problem (e.g. "how do I upgrade my plan") were being classified into whatever technical bucket seemed closest (Billing, Software) instead of `General Inquiry`.
 2. **Priority:** the model consistently regressed toward `Medium` regardless of actual urgency — it avoided both `High` and `Low` even when the ticket clearly warranted them.
 
-Adding explicit rubrics for both fixed category accuracy completely and improved priority substantially. The remaining priority misses in iteration 2 show a **new, smaller, opposite-direction bias**: the rubric's emphasis on "check for a full blocker before defaulting to Medium" made the model slightly *over*-escalate borderline cases (e.g. a WiFi reconnect issue with an easy workaround got called `High` instead of `Medium`). This is a legitimate, understood limitation — not random error — and is a good candidate for a future few-shot prompting pass (see Future Improvements).
+Adding explicit rubrics for both fixed category accuracy completely and improved priority substantially. The remaining priority misses in iteration 2 show a **new, smaller, opposite-direction bias**: the rubric's emphasis on "check for a full blocker before defaulting to Medium" made the model slightly _over_-escalate borderline cases (e.g. a WiFi reconnect issue with an easy workaround got called `High` instead of `Medium`). This is a legitimate, understood limitation — not random error — and is a good candidate for a future few-shot prompting pass (see Future Improvements).
 
 ### Retriever Agent accuracy (hand-written eval set)
 
@@ -347,14 +352,14 @@ Evaluated against the original 20 hand-labeled hand-written tickets
 (`data/test_pipeline.py`), using the initial 25-entry hand-written knowledge
 base seeded across all 7 categories.
 
-| Metric | Result |
-|---|---|
-| Retrieval hit rate | 90.0% (18/20) |
+| Metric                       | Result        |
+| ---------------------------- | ------------- |
+| Retrieval hit rate           | 90.0% (18/20) |
 | Category agreement (of hits) | 94.4% (17/18) |
 
 **The 2 misses** were both genuine knowledge-base coverage gaps, not retrieval
 failures: "screen flickering after update" has no matching entry (the closest
-KB entry covers monitor *detection*, not flickering), and "feature request for
+KB entry covers monitor _detection_, not flickering), and "feature request for
 dark mode" has no matching entry because the KB's single General Inquiry entry
 covers plan upgrades only.
 
@@ -397,10 +402,10 @@ to **26% (13/50)** — a real but small gain relative to Round 1.
 (`data/diagnose_row3_anomaly.py`) isolated why. One remaining miss — a
 ticket asking "I'm unable to find the option to perform the desired action,
 could you guide me through the steps?" — scored only **0.216** against a KB
-entry that is, in meaning, a near-exact paraphrase: *"user can't locate a
+entry that is, in meaning, a near-exact paraphrase: _"user can't locate a
 specific feature, setting, or option and needs step-by-step navigation
-guidance."* A sanity check against clearly unrelated KB entries (WiFi,
-battery, billing) confirmed the embedding model's *ranking* is correct
+guidance."_ A sanity check against clearly unrelated KB entries (WiFi,
+battery, billing) confirmed the embedding model's _ranking_ is correct
 (the real match scores far higher than unrelated ones), but its **absolute
 similarity score for this kind of paraphrase pair is intrinsically low** —
 `all-MiniLM-L6-v2` leans more on lexical/structural overlap than deep
@@ -419,17 +424,17 @@ content — see Future Improvements.
 Evaluated end-to-end (Classifier → Retriever → Resolver → Escalation Judge)
 against 20 real Kaggle support tickets held out from threshold tuning.
 
-| Metric                          | Value        |
-|-----------------------------------|--------------|
-| Classifier category accuracy      | 70.0% (14/20) |
-| Classifier priority accuracy      | 50.0% (10/20) |
-| Escalation decision accuracy      | 45.0% (9/20) |
-| False-escalation rate             | 100% (11/11) |
-| False-confidence rate             | 0% (0/9)     |
+| Metric                       | Value         |
+| ---------------------------- | ------------- |
+| Classifier category accuracy | 70.0% (14/20) |
+| Classifier priority accuracy | 50.0% (10/20) |
+| Escalation decision accuracy | 45.0% (9/20)  |
+| False-escalation rate        | 100% (11/11)  |
+| False-confidence rate        | 0% (0/9)      |
 
 **Zero false-confidence is the load-bearing number here.** The system never
 auto-resolved a ticket it shouldn't have — every escalation "failure" was an
-*over-cautious* one (escalating a ticket a human reviewer might have let
+_over-cautious_ one (escalating a ticket a human reviewer might have let
 through), never an under-cautious one. For a confidence-gated system, this
 is the correct failure direction: it's far safer to escalate unnecessarily
 than to auto-resolve incorrectly.
@@ -480,7 +485,7 @@ condition, not restructuring how agents communicate.
 
 CrewAI's abstraction is built around roles and delegation — a crew of agents
 that reason about how to divide work among themselves. That's a good fit
-for open-ended tasks where the *sequence* of work isn't known in advance.
+for open-ended tasks where the _sequence_ of work isn't known in advance.
 This project's pipeline is the opposite: the sequence is fixed and known
 (classify, then retrieve, then resolve, then judge), and each step is a
 plain Python function that's already unit-testable in isolation (see
@@ -499,7 +504,7 @@ LangGraph.
 A fully autonomous agent that always resolves and always replies is easy to
 build and easy to get badly wrong — a wrong password-reset trigger or a
 wrong billing refund is worse than no action at all. The project's premise
-is that *knowing when the pipeline doesn't know* is more valuable than
+is that _knowing when the pipeline doesn't know_ is more valuable than
 maximizing the percentage of tickets it touches.
 
 This shows up in the design well before Week 3's formal Escalation Judge:
@@ -526,7 +531,7 @@ real-world coverage yet.
 
 The project already runs its relational data — `Ticket`, `AgentDecision` — on
 Postgres via Neon. Adding pgvector meant the `Resolution` knowledge base could
-live in the *same* database as one more table with a `Vector(384)` column,
+live in the _same_ database as one more table with a `Vector(384)` column,
 rather than standing up a second system and syncing state between them.
 
 For a knowledge base this size (50 entries as of Week 4, realistically a few
@@ -567,7 +572,7 @@ bias (observed on both Llama 3.3 70B and, independently, on GPT-OSS 120B
 after migration — see Key Design Decisions #5) suggests this is a rubric
 tuning gap rather than a single-model quirk. A larger, more heavily-aligned
 model might generalize past it with less explicit rubric spelling-out. For
-a project demonstrating agent *architecture* (multi-agent orchestration,
+a project demonstrating agent _architecture_ (multi-agent orchestration,
 confidence gating, tool use) rather than pushing single-model classification
 accuracy to its ceiling, that trade-off favors Groq's open-weight models
 over GPT-4.
@@ -589,7 +594,7 @@ swap — it surfaced a real debugging problem worth documenting.
 the Resolver, but the Classifier still failed to parse LLM output on
 **100% of tickets** — every call returned an empty response.
 
-**Root cause:** `gpt-oss-120b` is a *reasoning* model — by default
+**Root cause:** `gpt-oss-120b` is a _reasoning_ model — by default
 (`reasoning_effort="medium"`) it spends part of its token budget on hidden
 chain-of-thought before producing the actual JSON answer. With the
 Classifier's tighter `max_tokens` budget, that reasoning consumed the
@@ -608,9 +613,72 @@ token budgets tuned for a prior model.
 
 ---
 
+## 🐛 Key Learnings
+
+### A schema/frontend mismatch that made the Confidence Gate lie
+
+The Usage section above documents `escalated` and `escalation_reason` as
+part of `/submit-ticket`'s response — and the frontend's `TicketResult`
+type in `lib/api.ts` was written against that documented contract. But
+`TicketResponse` in `app/schemas.py` never actually defined those two
+fields, so the real API response silently omitted them despite the docs
+and the frontend type both assuming they were there.
+
+At runtime, `result.escalated` was always `undefined`. The Confidence
+Gate's `open` state was computed as `!result.escalated` — and
+`!undefined` evaluates to `true` in JavaScript. The gate showed
+**"OPEN — AUTO-RESOLVED" for every single ticket**, regardless of what
+the Escalation Judge actually decided, including tickets the backend had
+genuinely flagged for human escalation. The reasoning box was blank for
+the same underlying reason — `escalation_reason` was undefined too.
+
+**How it was caught:** not by the test suite (this predates the tests in
+`tests/`, and it's exactly the kind of gap a schema-level test alone
+wouldn't have caught, since Pydantic will happily validate a response
+that's simply missing optional context the frontend expected). It
+surfaced by deliberately cross-checking three independent sources against
+each other for the same ticket: the `AgentDecision` audit rows in the
+database (which correctly showed `"No confident match found"`), the raw
+`/submit-ticket` response body inspected directly in the browser's
+Network tab, and the UI's rendered state. The audit trail said one thing,
+the UI said another — that mismatch is what pointed at the frontend
+rather than the escalation logic itself, which turned out to be correct
+all along.
+
+**The fix, two-sided:**
+
+1. `app/schemas.py` — added `escalated: bool` and `escalation_reason: str`
+   to `TicketResponse`, matching what was already documented.
+2. `app/main.py` — `submit_ticket()` now actually reads
+   `result["escalate"]` / `result["escalation_reason"]` (already computed
+   by `judge_node` in the LangGraph pipeline, just never returned to the
+   client) and populates them. This also surfaced a second gap: the
+   Escalation Judge's decision was never written to the `AgentDecision`
+   audit table at all — classifier, retriever, and resolver each got a
+   row, the Judge didn't — which is now fixed alongside it.
+
+**Regression coverage:** `tests/test_routes.py`'s
+`TestEscalationFieldsInResponse` class pins this at the API-response
+level specifically — not just that `judge_escalation()` computes the
+right answer internally (that's `test_escalation_judge.py`'s job), but
+that `submit_ticket()` actually puts it on the response. Confirmed by
+running these tests against the pre-fix code: they fail with
+`KeyError: 'escalated'`, and pass against the fix.
+
+**The general lesson:** a documented API contract and a frontend type
+both agreeing on a field's existence isn't the same as the backend
+actually sending it. Nothing in the type system or the docs enforced
+that connection — `res.json()` in `lib/api.ts` was an untyped cast, so
+TypeScript had no way to catch the mismatch at compile time, and it took
+a live, cross-source check (DB vs. wire response vs. UI) to catch a bug
+that made a "confidence-gated" system look confident about everything.
+
+---
+
 ## 🔮 Future Improvements
 
 ### Short term
+
 - [ ] Add a reranking step (e.g. a cross-encoder) for borderline retrieval
       cases — the row-3 diagnostic (see Results) showed the embedding model
       correctly ranks the right KB entry highest but under-scores its
@@ -626,11 +694,13 @@ token budgets tuned for a prior model.
       resolved it across two model generations
 
 ### Medium term
+
 - [ ] Replace mock tools with a real ticketing system integration (Zendesk/Freshdesk sandbox API)
 - [ ] Add a feedback loop where human corrections retrain the Retriever's knowledge base
 - [ ] Evaluate a larger/stronger sentence embedding model as an alternative to `all-MiniLM-L6-v2`, trading some latency for better paraphrase sensitivity
 
 ### Long term
+
 - [ ] Multi-turn ticket handling (follow-up questions before resolving)
 - [ ] A/B test against a single-LLM baseline to quantify the value of the multi-agent structure
 
