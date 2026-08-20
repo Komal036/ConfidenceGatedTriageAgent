@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run test suite
+        env:
+          # Fake credentials -- the test suite mocks the Groq client and DB
+          # session, and stubs sentence-transformers, so no real API key or
+          # database connection is needed for the default CI job. See
+          # tests/test_db_models.py for the one test that opts into a real
+          # Postgres connection and is skipped here.
+          DATABASE_URL: "postgresql://ci:ci@localhost:5432/ci"
+          GROQ_API_KEY: "ci-placeholder-key"
+        run: |
+          python -m pytest tests/ -v
