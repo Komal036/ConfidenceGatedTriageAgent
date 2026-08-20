@@ -63,10 +63,11 @@ def submit_ticket(ticket_in: TicketCreate, db: Session = Depends(get_db)):
     db.refresh(ticket)
 
     db.add(models.AgentDecision(
-        ticket_id=ticket.id,
-        agent_name="classifier",
-        output_summary=f"Category: {result['category']}, Priority: {result['priority']}",
-    ))
+    ticket_id=ticket.id,
+    agent_name="escalation_judge",
+    output_summary=result["escalation_reason"],
+    confidence=result["retrieved_match"]["similarity"] if result["retrieved_match"] else None,
+))
 
     retrieved_match = result["retrieved_match"]
     if retrieved_match:
@@ -94,14 +95,16 @@ def submit_ticket(ticket_in: TicketCreate, db: Session = Depends(get_db)):
     db.commit()
 
     return TicketResponse(
-        id=str(ticket.id),
-        subject=ticket.subject,
-        description=ticket.description,
-        category=ticket.category,
-        priority=ticket.priority,
-        status=ticket.status,
-        matched_issue=retrieved_match["matched_issue"] if retrieved_match else None,
-        match_similarity=retrieved_match["similarity"] if retrieved_match else None,
-        draft_resolution=result["draft_resolution"],
-        tool_called=result["tool_called"],
-    )
+    id=str(ticket.id),
+    subject=ticket.subject,
+    description=ticket.description,
+    category=ticket.category,
+    priority=ticket.priority,
+    status=ticket.status,
+    matched_issue=retrieved_match["matched_issue"] if retrieved_match else None,
+    match_similarity=retrieved_match["similarity"] if retrieved_match else None,
+    draft_resolution=result["draft_resolution"],
+    tool_called=result["tool_called"],
+    escalated=result["escalate"],
+    escalation_reason=result["escalation_reason"],
+)
