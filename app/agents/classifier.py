@@ -41,6 +41,27 @@ plan questions, minor invoice discrepancies)
 Do not default to "Medium" as a safe middle ground — actively check whether the ticket describes \
 a full blocker (favor High/Critical) or a non-issue request (favor Low) before settling on Medium.
 
+EXAMPLES:
+Subject: "My laptop keeps disconnecting from WiFi"
+Description: "It drops every 10 minutes and I have to manually reconnect. Very annoying."
+Output: {{"category": "Network", "priority": "Medium"}}
+
+Subject: "Cannot login, getting 500 error on production"
+Description: "No one in my team can access the system. It's completely down."
+Output: {{"category": "Software", "priority": "Critical"}}
+
+Subject: "Need help upgrading to the premium tier"
+Description: "I want to purchase the premium plan but don't see the option."
+Output: {{"category": "General Inquiry", "priority": "Low"}}
+
+Subject: "Monitor sometimes flickers"
+Description: "My external monitor flickers once a day for a second."
+Output: {{"category": "Hardware", "priority": "Low"}}
+
+Subject: "Locked out of my account, urgent"
+Description: "I need to file taxes today and my password reset email is not arriving."
+Output: {{"category": "Account Access", "priority": "High"}}
+
 Ticket subject: {subject}
 Ticket description: {description}
 

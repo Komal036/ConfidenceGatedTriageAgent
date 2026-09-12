@@ -98,7 +98,7 @@ KNOWLEDGE_BASE_SEED = [
     {"category": "General Inquiry", "issue_summary": "General question about how a feature works",
      "resolution_text": "Point to the relevant help center article. If none exists, explain the feature directly and flag the documentation gap internally."},
 
-    # --- Week 3 additions (see module docstring) ---
+    # --- additions (see module docstring) ---
 
     # Network
     {"category": "Network", "issue_summary": "Device won't connect to any WiFi network during initial setup",
@@ -154,7 +154,7 @@ KNOWLEDGE_BASE_SEED = [
     {"category": "General Inquiry", "issue_summary": "User is asking for a product or feature recommendation rather than reporting a problem",
      "resolution_text": "This is a pre-purchase or advisory request, not a bug or fault. Point to the relevant product comparison page, or ask a clarifying question about their use case before recommending a specific option."},
 
-    # --- Week 4 additions (see module docstring) ---
+    # --- additions (see module docstring) ---
 
     # Hardware
     {"category": "Hardware", "issue_summary": "Battery life has been gradually declining over weeks or months of normal use",

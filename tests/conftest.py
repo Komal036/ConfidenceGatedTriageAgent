@@ -41,7 +41,18 @@ class _FakeSentenceTransformer:
         return _FakeVector([0.0] * 384)
 
 
+class _FakeCrossEncoder:
+    def __init__(self, *args, **kwargs):
+        pass
+        
+    def predict(self, pairs):
+        # Return a dummy score list matching the length of input pairs
+        import numpy as np
+        return np.array([0.9] * len(pairs))
+
+
 _fake_st_module.SentenceTransformer = _FakeSentenceTransformer
+_fake_st_module.CrossEncoder = _FakeCrossEncoder
 sys.modules.setdefault("sentence_transformers", _fake_st_module)
 
 import pytest
