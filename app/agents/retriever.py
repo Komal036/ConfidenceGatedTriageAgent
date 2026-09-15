@@ -7,7 +7,6 @@ os.environ["OPENBLAS_NUM_THREADS"] = "1"
 os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
 os.environ["NUMEXPR_NUM_THREADS"] = "1"
 
-from sentence_transformers import SentenceTransformer, CrossEncoder
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 
@@ -15,14 +14,18 @@ from app.db import models
 
 logger = logging.getLogger(__name__)
 
-import torch
-torch.set_num_threads(1)
-
 _embedding_model = None
 _cross_encoder = None
 
 def _get_models():
     global _embedding_model, _cross_encoder
+    
+    # Import locally to avoid massive memory spikes during Uvicorn startup
+    import torch
+    torch.set_num_threads(1)
+    
+    from sentence_transformers import SentenceTransformer, CrossEncoder
+    
     if _embedding_model is None:
         logger.info("Lazy-loading SentenceTransformer...")
         _embedding_model = SentenceTransformer("all-MiniLM-L6-v2", device="cpu")
