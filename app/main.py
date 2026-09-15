@@ -21,7 +21,18 @@ from fastapi.middleware.cors import CORSMiddleware
 
 logging.basicConfig(level=logging.INFO)
 
-app = FastAPI()
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logging.info("Lifespan: Pre-importing PyTorch in main thread to avoid threadpool deadlock...")
+    import torch
+    torch.set_num_threads(1)
+    import sentence_transformers
+    logging.info("Lifespan: PyTorch and SentenceTransformers loaded.")
+    yield
+
+app = FastAPI(lifespan=lifespan)
 
 limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
