@@ -18,14 +18,18 @@ logger = logging.getLogger(__name__)
 import torch
 torch.set_num_threads(1)
 
-# Loaded once at import time, reused across requests — same pattern as the
-# Groq client in classifier.py, for the same reason: expensive setup done
-# once, not per-request.
-_embedding_model = SentenceTransformer("all-MiniLM-L6-v2", device="cpu")
-# Add a cross-encoder for semantic reranking of the top K results.
-# Using the stsb model because it naturally outputs scores between 0 and 1,
-# matching our pipeline's expected similarity thresholding.
-_cross_encoder = CrossEncoder("cross-encoder/stsb-MiniLM-L6-v2", device="cpu")
+_embedding_model = None
+_cross_encoder = None
+
+def _get_models():
+    global _embedding_model, _cross_encoder
+    if _embedding_model is None:
+        logger.info("Lazy-loading SentenceTransformer...")
+        _embedding_model = SentenceTransformer("all-MiniLM-L6-v2", device="cpu")
+    if _cross_encoder is None:
+        logger.info("Lazy-loading CrossEncoder...")
+        _cross_encoder = CrossEncoder("cross-encoder/stsb-MiniLM-L6-v2", device="cpu")
+    return _embedding_model, _cross_encoder
 
 # Below this cosine similarity, we don't trust the match. This is a first
 # guess — Week 3's threshold sweep (for the Escalation Judge) will tell us
@@ -46,7 +50,8 @@ def retrieve_resolution(db: Session, ticket_text: str) -> dict | None:
     or None if nothing scores above SIMILARITY_THRESHOLD — a deliberate
     "I don't know" result rather than forcing a weak match.
     """
-    query_embedding = _embedding_model.encode(ticket_text).tolist()
+    embed_model, cross_enc = _get_models()
+    query_embedding = embed_model.encode(ticket_text).tolist()
 
     # pgvector's <=> operator returns cosine DISTANCE (0 = identical, 2 = opposite).
     distance_col = models.Resolution.embedding.cosine_distance(query_embedding)
@@ -68,7 +73,7 @@ def retrieve_resolution(db: Session, ticket_text: str) -> dict | None:
     pairs = [[ticket_text, res.Resolution.issue_summary] for res in results]
     
     # Predict semantic similarity scores (0 to 1 for stsb models)
-    cross_scores = _cross_encoder.predict(pairs)
+    cross_scores = cross_enc.predict(pairs)
     
     # Find the candidate with the highest cross-encoder score
     best_idx = cross_scores.argmax()
