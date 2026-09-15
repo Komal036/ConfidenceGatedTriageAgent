@@ -67,7 +67,7 @@ def retrieve_resolution(db: Session, ticket_text: str) -> dict | None:
 
     # 2. CROSS-ENCODER RERANKING
     logger.info("Loading CrossEncoder into memory...")
-    cross_enc = CrossEncoder("cross-encoder/stsb-MiniLM-L6-v2", device="cpu")
+    cross_enc = CrossEncoder("cross-encoder/stsb-distilroberta-base", device="cpu")
     
     # Pair the incoming ticket with each candidate's issue summary
     pairs = [[ticket_text, res.Resolution.issue_summary] for res in results]
