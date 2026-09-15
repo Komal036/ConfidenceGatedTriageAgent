@@ -36,7 +36,7 @@ async def lifespan(app: FastAPI):
     del embed
     gc.collect()
     
-    cross = CrossEncoder("cross-encoder/stsb-distilroberta-base", device="cpu")
+    cross = CrossEncoder("cross-encoder/ms-marco-MiniLM-L6-v2", device="cpu")
     del cross
     gc.collect()
     
