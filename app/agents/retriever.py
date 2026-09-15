@@ -1,4 +1,11 @@
+import os
 import logging
+
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
+os.environ["NUMEXPR_NUM_THREADS"] = "1"
 
 from sentence_transformers import SentenceTransformer, CrossEncoder
 from sqlalchemy.orm import Session
@@ -8,14 +15,17 @@ from app.db import models
 
 logger = logging.getLogger(__name__)
 
+import torch
+torch.set_num_threads(1)
+
 # Loaded once at import time, reused across requests — same pattern as the
 # Groq client in classifier.py, for the same reason: expensive setup done
 # once, not per-request.
-_embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
+_embedding_model = SentenceTransformer("all-MiniLM-L6-v2", device="cpu")
 # Add a cross-encoder for semantic reranking of the top K results.
 # Using the stsb model because it naturally outputs scores between 0 and 1,
 # matching our pipeline's expected similarity thresholding.
-_cross_encoder = CrossEncoder("cross-encoder/stsb-MiniLM-L6-v2")
+_cross_encoder = CrossEncoder("cross-encoder/stsb-MiniLM-L6-v2", device="cpu")
 
 # Below this cosine similarity, we don't trust the match. This is a first
 # guess — Week 3's threshold sweep (for the Escalation Judge) will tell us

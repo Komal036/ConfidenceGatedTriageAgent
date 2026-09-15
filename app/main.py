@@ -1,3 +1,11 @@
+import os
+# Prevent PyTorch from allocating massive thread pools on Render's large host machines
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
+os.environ["NUMEXPR_NUM_THREADS"] = "1"
+
 import logging
 from fastapi import FastAPI, Depends, Request
 from sqlalchemy.orm import Session
