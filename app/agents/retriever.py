@@ -1,6 +1,12 @@
+import os
 import logging
 
-from sentence_transformers import SentenceTransformer, CrossEncoder
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
+os.environ["NUMEXPR_NUM_THREADS"] = "1"
+
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 
@@ -8,14 +14,10 @@ from app.db import models
 
 logger = logging.getLogger(__name__)
 
-# Loaded once at import time, reused across requests — same pattern as the
-# Groq client in classifier.py, for the same reason: expensive setup done
-# once, not per-request.
-_embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
-# Add a cross-encoder for semantic reranking of the top K results.
-# Using the stsb model because it naturally outputs scores between 0 and 1,
-# matching our pipeline's expected similarity thresholding.
-_cross_encoder = CrossEncoder("cross-encoder/stsb-MiniLM-L6-v2")
+# We no longer cache models globally because 512MB is too small to hold 
+# FastAPI + PyTorch + SentenceTransformer + CrossEncoder simultaneously.
+# Instead, we will load them sequentially and explicitly garbage collect them.
+import gc
 
 # Below this cosine similarity, we don't trust the match. This is a first
 # guess — Week 3's threshold sweep (for the Escalation Judge) will tell us
@@ -36,12 +38,18 @@ def retrieve_resolution(db: Session, ticket_text: str) -> dict | None:
     or None if nothing scores above SIMILARITY_THRESHOLD — a deliberate
     "I don't know" result rather than forcing a weak match.
     """
-    query_embedding = _embedding_model.encode(ticket_text).tolist()
+    # Import locally to avoid massive memory spikes during Uvicorn startup
+    import torch
+    torch.set_num_threads(1)
+    from sentence_transformers import SentenceTransformer, CrossEncoder
 
-    # pgvector's <=> operator returns cosine DISTANCE (0 = identical, 2 = opposite).
-    distance_col = models.Resolution.embedding.cosine_distance(query_embedding)
-
+    logger.info("Loading SentenceTransformer into memory...")
+    embed_model = SentenceTransformer("all-MiniLM-L6-v2", device="cpu")
+    query_embedding = embed_model.encode(ticket_text).tolist()
+    
     # 1. FETCH TOP K CANDIDATES
+    # We query the DB here so we can delete the embed_model from memory ASAP
+    distance_col = models.Resolution.embedding.cosine_distance(query_embedding)
     results = (
         db.query(models.Resolution, distance_col.label("distance"))
         .order_by(distance_col)
@@ -49,16 +57,27 @@ def retrieve_resolution(db: Session, ticket_text: str) -> dict | None:
         .all()
     )
 
+    # Free up 100MB+ of RAM before loading the CrossEncoder!
+    del embed_model
+    gc.collect()
+
     if not results:
         logger.warning("Knowledge base is empty — did you run seed_knowledge_base.py?")
         return None
 
     # 2. CROSS-ENCODER RERANKING
+    logger.info("Loading CrossEncoder into memory...")
+    cross_enc = CrossEncoder("cross-encoder/stsb-MiniLM-L6-v2", device="cpu")
+    
     # Pair the incoming ticket with each candidate's issue summary
     pairs = [[ticket_text, res.Resolution.issue_summary] for res in results]
     
     # Predict semantic similarity scores (0 to 1 for stsb models)
-    cross_scores = _cross_encoder.predict(pairs)
+    cross_scores = cross_enc.predict(pairs)
+    
+    # Free up 100MB+ of RAM
+    del cross_enc
+    gc.collect()
     
     # Find the candidate with the highest cross-encoder score
     best_idx = cross_scores.argmax()

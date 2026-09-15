@@ -1,3 +1,11 @@
+import os
+# Prevent PyTorch from allocating massive thread pools on Render's large host machines
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
+os.environ["NUMEXPR_NUM_THREADS"] = "1"
+
 import logging
 from fastapi import FastAPI, Depends, Request
 from sqlalchemy.orm import Session
@@ -13,7 +21,18 @@ from fastapi.middleware.cors import CORSMiddleware
 
 logging.basicConfig(level=logging.INFO)
 
-app = FastAPI()
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logging.info("Lifespan: Pre-importing PyTorch in main thread to avoid threadpool deadlock...")
+    import torch
+    torch.set_num_threads(1)
+    import sentence_transformers
+    logging.info("Lifespan: PyTorch and SentenceTransformers loaded.")
+    yield
+
+app = FastAPI(lifespan=lifespan)
 
 limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
