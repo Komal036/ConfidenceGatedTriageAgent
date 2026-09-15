@@ -27,9 +27,20 @@ from contextlib import asynccontextmanager
 async def lifespan(app: FastAPI):
     logging.info("Lifespan: Pre-importing PyTorch in main thread to avoid threadpool deadlock...")
     import torch
+    import gc
     torch.set_num_threads(1)
-    import sentence_transformers
-    logging.info("Lifespan: PyTorch and SentenceTransformers loaded.")
+    from sentence_transformers import SentenceTransformer, CrossEncoder
+    logging.info("Lifespan: Pre-downloading models to disk cache sequentially...")
+    
+    embed = SentenceTransformer("all-MiniLM-L6-v2", device="cpu")
+    del embed
+    gc.collect()
+    
+    cross = CrossEncoder("cross-encoder/stsb-MiniLM-L6-v2", device="cpu")
+    del cross
+    gc.collect()
+    
+    logging.info("Lifespan: Models downloaded and cached successfully.")
     yield
 
 app = FastAPI(lifespan=lifespan)
