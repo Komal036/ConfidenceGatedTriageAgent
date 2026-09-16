@@ -34,5 +34,6 @@ jobs:
           # Postgres connection and is skipped here.
           DATABASE_URL: "postgresql://ci:ci@localhost:5432/ci"
           GROQ_API_KEY: "ci-placeholder-key"
+          REDIS_URL: ""
         run: |
           python -m pytest tests/ -v

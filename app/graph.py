@@ -60,12 +60,12 @@ def classify_node(state: TriageState) -> dict:
     return {"category": result["category"], "priority": result["priority"]}
 
 
-def retrieve_node(state: TriageState) -> dict:
+async def retrieve_node(state: TriageState) -> dict:
     # Retriever was built against short "issue summary"-style text, so
     # concatenate subject + description the same way the Week 2 seed
     # embeddings were generated, rather than passing them separately.
     ticket_text = f"{state['subject']}. {state['description']}"
-    match = retrieve_resolution(state["db"], ticket_text)
+    match = await retrieve_resolution(state["db"], ticket_text)
 
     if match:
         logger.info(
@@ -120,7 +120,7 @@ def build_graph():
 triage_graph = build_graph()
 
 
-def run_triage_pipeline(db: Session, subject: str, description: str) -> TriageState:
+async def run_triage_pipeline(db: Session, subject: str, description: str) -> TriageState:
     """
     Runs the full Classifier -> Retriever -> Resolver pipeline for one
     ticket and returns the final state.
@@ -139,4 +139,4 @@ def run_triage_pipeline(db: Session, subject: str, description: str) -> TriageSt
         "escalate": None,
         "escalation_reason": None,
     }
-    return triage_graph.invoke(initial_state)
+    return await triage_graph.ainvoke(initial_state)

@@ -1,11 +1,4 @@
 import os
-# Prevent PyTorch from allocating massive thread pools on Render's large host machines
-os.environ["OMP_NUM_THREADS"] = "1"
-os.environ["MKL_NUM_THREADS"] = "1"
-os.environ["OPENBLAS_NUM_THREADS"] = "1"
-os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
-os.environ["NUMEXPR_NUM_THREADS"] = "1"
-
 import logging
 from fastapi import FastAPI, Depends, Request
 from sqlalchemy.orm import Session
@@ -21,29 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 logging.basicConfig(level=logging.INFO)
 
-from contextlib import asynccontextmanager
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    logging.info("Lifespan: Pre-importing PyTorch in main thread to avoid threadpool deadlock...")
-    import torch
-    import gc
-    torch.set_num_threads(1)
-    from sentence_transformers import SentenceTransformer, CrossEncoder
-    logging.info("Lifespan: Pre-downloading models to disk cache sequentially...")
-    
-    embed = SentenceTransformer("all-MiniLM-L6-v2", device="cpu")
-    del embed
-    gc.collect()
-    
-    cross = CrossEncoder("cross-encoder/ms-marco-MiniLM-L6-v2", device="cpu")
-    del cross
-    gc.collect()
-    
-    logging.info("Lifespan: Models downloaded and cached successfully.")
-    yield
-
-app = FastAPI(lifespan=lifespan)
+app = FastAPI()
 
 limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
@@ -68,7 +39,7 @@ def health_check():
 
 @app.post("/submit-ticket", response_model=TicketResponse)
 @limiter.limit("100/minute")
-def submit_ticket(request: Request, ticket_in: TicketCreate, db: Session = Depends(get_db)):
+async def submit_ticket(request: Request, ticket_in: TicketCreate, db: Session = Depends(get_db)):
     """
     run the full agent pipeline (Classifier -> Retriever -> Resolver ->
     Escalation Judge) via the LangGraph state graph in app/graph.py, and
@@ -92,7 +63,7 @@ def submit_ticket(request: Request, ticket_in: TicketCreate, db: Session = Depen
     db.commit()
     db.refresh(ticket)
 
-    result = run_triage_pipeline(db, ticket_in.subject, ticket_in.description)
+    result = await run_triage_pipeline(db, ticket_in.subject, ticket_in.description)
 
     ticket.category = result["category"]
     ticket.priority = result["priority"]
