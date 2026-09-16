@@ -33,6 +33,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/")
+def read_root():
+    return {"status": "ok", "message": "ConfidenceGatedTriageAgent API is running. POST to /submit-ticket to interact."}
+
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
